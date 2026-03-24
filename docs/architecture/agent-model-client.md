@@ -7,7 +7,7 @@ Define a minimal, extensible architecture that allows the benchmark agent to swi
 - local LLM runtimes (for example, Ollama)
 - frontier API LLM providers
 
-This architecture is intentionally small so the project can prioritize the first legitimate benchmark score.
+This architecture is intentionally small so the project can improve benchmark performance quickly while preserving a clean path to higher-scoring provider and model choices.
 
 ## Core interface
 
@@ -48,7 +48,6 @@ Guidelines:
 
 ## Design constraints for current contest phase
 
-- optimize for first end-to-end scored run over framework complexity
 - keep the adapter boundary narrow and testable
 - avoid provider-specific branching in core agent decision logic
 
