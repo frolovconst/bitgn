@@ -14,8 +14,8 @@
         };
 
         localLlmHome = ''
-          if [ -d "$PWD/local-llms" ]; then
-            export LOCAL_LLM_HOME="$PWD/local-llms"
+          if [ -d "$PWD/workspaces/local-llms" ]; then
+            export LOCAL_LLM_HOME="$PWD/workspaces/local-llms"
           else
             export LOCAL_LLM_HOME="$PWD"
           fi

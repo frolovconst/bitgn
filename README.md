@@ -4,7 +4,7 @@ Repository for building an AI agent to compete on BitGN benchmark challenges and
 
 ## Project Areas
 
-- `local-llms/` - isolated workspace for local model runtime and agent-development tooling that supports benchmark iteration.
+- `workspaces/local-llms/` - isolated workspace for local model runtime and agent-development tooling that supports benchmark iteration.
 
 ## Repository Knowledge
 

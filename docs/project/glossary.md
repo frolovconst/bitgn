@@ -9,7 +9,7 @@
 - `agent architecture`: the practical design of the agent, including planning, tool use, memory, security posture, and reliability choices.
 - `evaluation harness`: the scoring and feedback machinery provided by the benchmark platform.
 - `challenge environment`: the simulated environment exposed through the BitGN API where the agent performs tasks.
-- `local-llms`: the isolated workspace for local model runtime and development tooling that supports agent iteration.
+- `workspaces/local-llms`: the isolated workspace for local model runtime and development tooling that supports agent iteration.
 - `system of record`: the canonical doc location for a given kind of knowledge.
 - `runbook`: an operational workflow with concrete steps.
 
