@@ -1,0 +1,15 @@
+# Architecture Index
+
+This section describes the technical shape of the repository.
+
+## Current documents
+
+- [`local-llms-workspace.md`](./local-llms-workspace.md): architecture and boundaries of the current active workspace
+
+## Architecture topics to capture here
+
+- repository layout and ownership boundaries
+- data and state locations
+- environment boundaries
+- key scripts, services, and interfaces
+- assumptions that affect implementation work
