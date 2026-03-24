@@ -4,10 +4,10 @@
 
 Define a minimal, extensible architecture that allows the benchmark agent to switch between:
 
-- local LLM runtimes (for example, Ollama)
-- frontier API LLM providers
+- local LLM runtimes (Ollama)
+- OpenAI API-hosted models
 
-This architecture is intentionally small so the project can improve benchmark performance quickly while preserving a clean path to higher-scoring provider and model choices.
+This architecture is intentionally small so the project can improve benchmark performance quickly while preserving a clean path to provider and model changes.
 
 ## Core interface
 
@@ -16,28 +16,29 @@ Use a single provider-agnostic interface in agent code:
 - `ModelClient.generate(messages, settings) -> ModelResponse`
 
 Agent logic depends on this interface only.
-Provider-specific SDK or transport code stays inside adapter implementations.
+Provider-specific transport code stays inside adapter implementations.
 
-## Initial adapters
+## Implemented adapters (v1)
 
-- `LocalOllamaClient` for local model runs
-- `FrontierApiClient` for hosted API models
+- `LocalOllamaClient` in `src/model_clients/ollama_client.py`
+- `OpenAIModelClient` in `src/model_clients/openai_client.py`
 
-Both adapters must return the same normalized `ModelResponse` shape.
+Both adapters return a normalized `ModelResponse` shape from `src/model_clients/types.py`.
+
+A small factory in `src/model_clients/factory.py` selects the adapter from config.
 
 ## Runtime selection via config
 
-Select the active model provider through configuration (not code edits).
+Current config shape:
 
-Suggested config shape:
-
-```yaml
-model:
-  provider: local # local | api
-  model: qwen2.5-coder:3b
-  base_url: http://127.0.0.1:11434
-  api_key_env: OPENAI_API_KEY
-  timeout_seconds: 60
+```python
+ModelClientConfig(
+  provider="local",   # local | openai
+  model="qwen2.5-coder:3b",
+  base_url="http://127.0.0.1:11434",
+  api_key_env="OPENAI_API_KEY",  # openai only
+  timeout_seconds=60.0,
+)
 ```
 
 Guidelines:
@@ -50,10 +51,11 @@ Guidelines:
 
 - keep the adapter boundary narrow and testable
 - avoid provider-specific branching in core agent decision logic
+- prioritize fast unit tests by mocking transport rather than launching model servers
 
 ## Done criteria for this architecture slice
 
 - agent can run with `provider: local`
-- agent can run with `provider: api`
+- agent can run with `provider: openai`
 - switching providers requires configuration change only
-- run artifacts record which provider/model produced each result
+- tests validate request/response normalization behavior without external network dependencies
