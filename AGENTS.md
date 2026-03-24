@@ -7,11 +7,13 @@ The system of record for project knowledge lives under [`docs/`](./docs/README.m
 
 ## What this repository is
 
-`columbarium` is a parent repository for experimental work.
+`columbarium` is a repository for building and improving an AI agent for BitGN benchmark challenges.
 
-Right now, the main active area is [`local-llms/`](./local-llms/README.md), an isolated workspace for:
+The main objective is to maximize benchmark performance and leaderboard standing on BitGN.
 
-- local LLM experimentation
+Right now, the main active area is [`local-llms/`](./local-llms/README.md), an isolated supporting workspace for:
+
+- local model experimentation
 - Ollama-based development workflows
 - Nix-based reproducibility
 - agent-development tooling
@@ -28,10 +30,12 @@ Start here depending on the task:
 - Research notes and experiments: [`docs/experiments/index.md`](./docs/experiments/index.md)
 - Decisions and tradeoffs: [`docs/decisions/index.md`](./docs/decisions/index.md)
 - External references and vendor docs: [`docs/references/index.md`](./docs/references/index.md)
+- Verified BitGN context: [`docs/references/bitgn-platform.md`](./docs/references/bitgn-platform.md)
 
 ## Working rules for agents
 
 - Prefer repo docs over assumptions.
+- Optimize for measurable benchmark progress rather than generic experimentation.
 - If you discover something important that is durable, add or update the relevant doc in `docs/`.
 - If you make a significant architectural or workflow change, update the matching system-of-record file in the same change.
 - Keep top-level docs short and navigational. Move depth into the relevant folder under `docs/`.

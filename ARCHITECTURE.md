@@ -5,9 +5,11 @@ Detailed source-of-truth documents live in [`docs/architecture/`](./docs/archite
 
 ## Current state
 
-The repository currently acts as a container for experimental workstreams.
+The repository currently acts as a benchmark-agent project with supporting experimentation infrastructure.
 
-The first established workstream is [`local-llms/`](./local-llms/README.md), which provides:
+The central product goal is to build an AI agent that performs strongly on BitGN benchmark challenges.
+
+The first established technical workstream is [`local-llms/`](./local-llms/README.md), which provides:
 
 - an isolated Nix development environment
 - local Ollama-based model workflows
@@ -16,7 +18,7 @@ The first established workstream is [`local-llms/`](./local-llms/README.md), whi
 
 ## Architectural intent
 
-The repo is organized to keep experimentation reproducible, inspectable, and compartmentalized.
+The repo is organized to support a fast, reproducible benchmark-improvement loop.
 
 That means:
 
@@ -24,6 +26,7 @@ That means:
 - local state should stay scoped to the relevant workspace where possible
 - helper scripts should remain easy to inspect
 - evolving project knowledge should live in docs alongside the code
+- benchmark-facing learnings should be captured as durable project knowledge
 
 ## Architecture index
 
@@ -33,7 +36,7 @@ That means:
 
 ## Open areas to document
 
-- future subprojects beyond `local-llms/`
-- shared conventions across experimental workspaces
-- deployment or service topology, if the repo grows into running systems
-- interfaces between experiments, tooling, and any product-facing surfaces
+- the benchmark-facing agent architecture itself
+- run and score tracking workflows
+- challenge-specific strategy or adaptation layers
+- interfaces between local tooling and the BitGN evaluation environment

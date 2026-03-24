@@ -4,7 +4,7 @@
 
 The `local-llms/` directory is the current primary implementation workspace in this repository.
 
-Its role is to provide an isolated, reproducible environment for local LLM development and experimentation.
+Its role is to provide an isolated, reproducible environment for agent development in support of BitGN benchmark work.
 
 ## Responsibilities
 
@@ -12,6 +12,7 @@ Its role is to provide an isolated, reproducible environment for local LLM devel
 - host helper scripts for Ollama workflows
 - keep model storage scoped to the workspace
 - provide reproducible commands for serving, pulling, and chatting with local models
+- support fast local iteration on agent behavior before or alongside benchmark runs
 
 ## Key files
 
@@ -37,3 +38,4 @@ Its role is to provide an isolated, reproducible environment for local LLM devel
 - What additional models should be standardized?
 - Should evaluation and benchmarking live in this workspace or in a sibling workspace?
 - What interfaces should future agents rely on here?
+- Which parts of the BitGN-facing agent loop should be testable locally?
