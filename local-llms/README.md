@@ -6,7 +6,7 @@ This folder is the isolated workspace for local LLM experimentation inside Colum
 
 - Nix-based development shell for agent and local-LLM work
 - local configuration files such as `.env`
-- future helper scripts for Ollama-based development
+- helper scripts and flake apps for Ollama-based development
 
 ## Enter the environment
 
@@ -25,6 +25,7 @@ nix develop
 
 ## Included tools
 
+- `ollama`
 - `python3`
 - `uv`
 - `git`
@@ -35,4 +36,12 @@ nix develop
 ## Notes
 
 - Keep secrets in `local-llms/.env`.
-- This environment is intentionally focused on development tooling; Ollama itself can still be run natively on macOS and pointed to from the agent code.
+- Ollama model data is stored under `local-llms/.ollama/models` to keep this workspace self-contained.
+- See [`RUNBOOK.md`](./RUNBOOK.md) for the reproducible workflow.
+- The main flake apps are:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' run ./local-llms#ollama-serve
+nix --extra-experimental-features 'nix-command flakes' run ./local-llms#qwen25-coder-3b-pull
+nix --extra-experimental-features 'nix-command flakes' run ./local-llms#qwen25-coder-3b-chat
+```
