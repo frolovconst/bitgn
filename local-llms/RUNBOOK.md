@@ -1,0 +1,54 @@
+# Local LLM Runbook
+
+This workflow keeps Ollama and its model data scoped to the `local-llms` workspace.
+
+## Recommended approach
+
+Use versioned scripts plus flake apps:
+
+- the scripts are easy to inspect and edit
+- the flake apps make them reproducible to run from any shell
+- the model storage remains under `local-llms/.ollama/models`
+
+## One-time setup
+
+From the repository root:
+
+```bash
+cd local-llms
+nix --extra-experimental-features 'nix-command flakes' develop
+```
+
+## Reproducible commands
+
+From the repository root:
+
+1. Start Ollama in one terminal:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' run ./local-llms#ollama-serve
+```
+
+2. Pull the model in a second terminal:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' run ./local-llms#qwen25-coder-3b-pull
+```
+
+3. Start the chat session:
+
+```bash
+nix --extra-experimental-features 'nix-command flakes' run ./local-llms#qwen25-coder-3b-chat
+```
+
+## Under the hood
+
+- `bin/ollama-serve.sh` starts the server
+- `bin/qwen25-coder-3b-pull.sh` downloads the model
+- `bin/qwen25-coder-3b-chat.sh` runs the model interactively
+
+## Why this is reproducible
+
+- the commands are stored in Git
+- the Nix flake pins package resolution through `flake.lock`
+- model storage is local to this workspace instead of your default user profile
