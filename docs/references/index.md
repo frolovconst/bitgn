@@ -10,6 +10,7 @@ Use this section for curated external references that are repeatedly useful.
 
 ## Current likely reference topics
 
+- BitGN benchmark platform and challenge model
 - Nix and flakes
 - Ollama
 - model runtime conventions
