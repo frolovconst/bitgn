@@ -2,7 +2,7 @@
 
 ## Summary
 
-The `local-llms/` directory is the current primary implementation workspace in this repository.
+The `workspaces/local-llms/` directory is the current primary supporting workspace in this repository.
 
 Its role is to provide an isolated, reproducible environment for agent development in support of BitGN benchmark work.
 
@@ -16,16 +16,16 @@ Its role is to provide an isolated, reproducible environment for agent developme
 
 ## Key files
 
-- [`local-llms/README.md`](../../local-llms/README.md)
-- [`local-llms/RUNBOOK.md`](../../local-llms/RUNBOOK.md)
-- [`local-llms/flake.nix`](../../local-llms/flake.nix)
-- [`local-llms/bin/`](../../local-llms/bin)
+- [`workspaces/local-llms/README.md`](../../workspaces/local-llms/README.md)
+- [`workspaces/local-llms/RUNBOOK.md`](../../workspaces/local-llms/RUNBOOK.md)
+- [`workspaces/local-llms/flake.nix`](../../workspaces/local-llms/flake.nix)
+- [`workspaces/local-llms/bin/`](../../workspaces/local-llms/bin)
 
 ## Operational model
 
 - development environment is created through Nix
 - Ollama commands are wrapped in versioned scripts and flake apps
-- model data is intentionally stored under `local-llms/.ollama/models`
+- model data is intentionally stored under `workspaces/local-llms/.ollama/models`
 
 ## Invariants
 

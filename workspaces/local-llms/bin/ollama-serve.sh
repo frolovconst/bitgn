@@ -1,8 +1,12 @@
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$script_dir/common-env.sh"
+init_local_llm_env
+
 echo "Starting Ollama server"
 echo "OLLAMA_HOST=${OLLAMA_HOST:-127.0.0.1:11434}"
-echo "OLLAMA_MODELS=${OLLAMA_MODELS:?OLLAMA_MODELS must be set}"
+echo "OLLAMA_MODELS=${OLLAMA_MODELS}"
 
 host_port="${OLLAMA_HOST#http://}"
 host_port="${host_port#https://}"

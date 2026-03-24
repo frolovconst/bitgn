@@ -9,12 +9,12 @@ The repository currently acts as a benchmark-agent project with supporting exper
 
 The central product goal is to build an AI agent that performs strongly on BitGN benchmark challenges.
 
-The first established technical workstream is [`local-llms/`](./local-llms/README.md), which provides:
+The first established technical workstream is [`workspaces/local-llms/`](./workspaces/local-llms/README.md), which provides:
 
 - an isolated Nix development environment
 - local Ollama-based model workflows
 - helper scripts for serving, pulling, and chatting with models
-- workspace-local model storage under `local-llms/.ollama/models`
+- workspace-local model storage under `workspaces/local-llms/.ollama/models`
 
 ## Architectural intent
 

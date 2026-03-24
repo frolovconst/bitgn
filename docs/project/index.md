@@ -13,7 +13,7 @@ The repository exists to support a tight benchmark loop:
 - study failures and score changes
 - evolve the system toward stronger leaderboard performance
 
-The `local-llms/` workspace is supporting infrastructure for that goal. It is not the goal by itself.
+The `workspaces/local-llms/` workspace is supporting infrastructure for that goal. It is not the goal by itself.
 
 ## Documents in this section
 

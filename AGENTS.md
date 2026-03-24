@@ -11,7 +11,7 @@ The system of record for project knowledge lives under [`docs/`](./docs/README.m
 
 The main objective is to maximize benchmark performance and leaderboard standing on BitGN.
 
-Right now, the main active area is [`local-llms/`](./local-llms/README.md), an isolated supporting workspace for:
+Right now, the main active area is [`workspaces/local-llms/`](./workspaces/local-llms/README.md), an isolated supporting workspace for:
 
 - local model experimentation
 - Ollama-based development workflows
@@ -44,8 +44,8 @@ Start here depending on the task:
 ## Current repo shape
 
 - [`README.md`](./README.md): brief repository entry point
-- [`local-llms/README.md`](./local-llms/README.md): local LLM workspace overview
-- [`local-llms/RUNBOOK.md`](./local-llms/RUNBOOK.md): reproducible workflow for Ollama and model usage
+- [`workspaces/local-llms/README.md`](./workspaces/local-llms/README.md): local LLM workspace overview
+- [`workspaces/local-llms/RUNBOOK.md`](./workspaces/local-llms/RUNBOOK.md): reproducible workflow for Ollama and model usage
 - [`docs/`](./docs/README.md): system of record for durable repository knowledge
 
 ## Documentation hygiene

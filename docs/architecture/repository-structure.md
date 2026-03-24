@@ -77,6 +77,6 @@ columbarium/
 
 ## Notes on evolution
 
-- `local-llms/` is currently the main active workspace and could later move under `workspaces/` if that improves clarity
+- `workspaces/local-llms/` is the current active supporting workspace and should remain isolated from benchmark-facing code
 - not every directory needs to exist immediately; this layout can be adopted incrementally as benchmark-facing code lands
 - if future work shows a better split between evaluation, agent logic, and tooling, this structure should be revised rather than preserved for its own sake
