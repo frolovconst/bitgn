@@ -41,6 +41,12 @@ nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-ll
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen25-coder-3b-chat
 ```
 
+4. Optionally run the live model-client integration test from the repository root in your runtime shell:
+
+```bash
+uv run pytest --run-local-model
+```
+
 ## Under the hood
 
 - `bin/common-env.sh` derives `LOCAL_LLM_HOME` and defaults `OLLAMA_HOST` and `OLLAMA_MODELS` so model state stays workspace-scoped

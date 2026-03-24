@@ -33,7 +33,7 @@
 
             echo "Entered Columbarium agent runtime shell"
             echo "AGENT_RUNTIME_HOME=$AGENT_RUNTIME_HOME"
-            echo "Tip: uv pip install -e .[dev]"
+            echo "Tip: uv run pytest"
           '';
         };
       });

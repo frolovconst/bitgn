@@ -32,8 +32,13 @@ nix develop
 ## Typical setup and test flow
 
 ```bash
-uv pip install -e .[dev]
-pytest
+uv run pytest
+```
+
+To include the real local-model integration test:
+
+```bash
+uv run pytest --run-local-model
 ```
 
 Use this shell for model-client unit tests and general Python development.

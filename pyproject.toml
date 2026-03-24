@@ -9,10 +9,13 @@ description = "BitGN benchmark agent foundations"
 requires-python = ">=3.10"
 dependencies = []
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "pytest>=8.2,<10",
 ]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -23,3 +26,6 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+markers = [
+  "local_model: integration test that makes a real request to the local Ollama model",
+]
