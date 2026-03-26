@@ -4,7 +4,9 @@ Repository for building an AI agent to compete on BitGN benchmark challenges and
 
 ## Project Areas
 
-- `workspaces/local-llms/` - isolated workspace for local model runtime and agent-development tooling that supports benchmark iteration.
+- `src/model_clients/` - provider-agnostic model client boundary with local (Ollama) and OpenAI adapters.
+- `workspaces/agent-runtime/` - Nix workspace for Python runtime development and fast tests.
+- `workspaces/local-llms/` - isolated workspace for local model runtime and Ollama-focused experimentation.
 
 ## Repository Knowledge
 

@@ -1,8 +1,18 @@
 # Repository Runbook
 
-## Current operator workflow
+## Current operator workflows
 
-The main documented operational flow today is the local LLM workflow under `workspaces/local-llms/`.
+### 1) Fast Python runtime + tests
+
+Use `workspaces/agent-runtime/` for quick local development and unit tests.
+
+Primary references:
+
+- [`workspaces/agent-runtime/README.md`](../../workspaces/agent-runtime/README.md)
+
+### 2) Local LLM hosting and experimentation
+
+Use `workspaces/local-llms/` for Ollama serving, model pulls, and local model chat.
 
 Primary references:
 
