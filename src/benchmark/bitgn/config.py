@@ -15,6 +15,14 @@ def _default_base_url(provider: str) -> str:
     raise ValueError(f"Unsupported model provider: {provider}")
 
 
+def _default_benchmark_id(kind: str) -> str:
+    if kind == "sandbox":
+        return "bitgn/sandbox"
+    if kind == "pac1":
+        return "bitgn/pac1-dev"
+    raise ValueError(f"Unsupported BitGN benchmark kind: {kind}")
+
+
 def _env_float(name: str, default: float) -> float:
     value = os.getenv(name)
     if value is None:
@@ -31,6 +39,7 @@ def _env_int(name: str, default: int | None) -> int | None:
 
 @dataclass(frozen=True)
 class BitgnRunConfig:
+    benchmark_kind: Literal["sandbox", "pac1"]
     benchmark_host: str
     benchmark_id: str
     max_steps: int
@@ -40,6 +49,10 @@ class BitgnRunConfig:
 
     @classmethod
     def from_env(cls, task_ids: list[str] | None = None) -> "BitgnRunConfig":
+        benchmark_kind_raw = os.getenv("BITGN_BENCHMARK_KIND", "sandbox")
+        if benchmark_kind_raw not in {"sandbox", "pac1"}:
+            raise ValueError(f"Unsupported BitGN benchmark kind: {benchmark_kind_raw}")
+        benchmark_kind: Literal["sandbox", "pac1"] = benchmark_kind_raw
         provider_raw = os.getenv("BITGN_MODEL_PROVIDER", "openai")
         if provider_raw not in {"local", "openai"}:
             raise ValueError(f"Unsupported model provider: {provider_raw}")
@@ -62,8 +75,9 @@ class BitgnRunConfig:
             timeout_seconds=timeout_seconds,
         )
         return cls(
+            benchmark_kind=benchmark_kind,
             benchmark_host=os.getenv("BENCHMARK_HOST", "https://api.bitgn.com"),
-            benchmark_id=os.getenv("BITGN_BENCHMARK_ID", "bitgn/sandbox"),
+            benchmark_id=os.getenv("BITGN_BENCHMARK_ID", _default_benchmark_id(benchmark_kind)),
             max_steps=int(os.getenv("BITGN_AGENT_MAX_STEPS", "30")),
             task_ids=tuple(task_ids or ()),
             model=model_config,

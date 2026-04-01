@@ -8,6 +8,7 @@ def test_config_from_env_defaults(monkeypatch):
 
     config = BitgnRunConfig.from_env()
 
+    assert config.benchmark_kind == "sandbox"
     assert config.benchmark_host == "https://api.bitgn.com"
     assert config.benchmark_id == "bitgn/sandbox"
     assert config.model.provider == "openai"
@@ -24,6 +25,17 @@ def test_config_from_env_local_provider(monkeypatch):
     assert config.model.provider == "local"
     assert config.model.base_url == "http://127.0.0.1:11434"
     assert config.task_ids == ("t01",)
+
+
+def test_config_from_env_pac1_defaults(monkeypatch):
+    monkeypatch.setenv("BITGN_MODEL", "gpt-4.1-mini")
+    monkeypatch.setenv("BITGN_BENCHMARK_KIND", "pac1")
+
+    config = BitgnRunConfig.from_env(task_ids=["task-1"])
+
+    assert config.benchmark_kind == "pac1"
+    assert config.benchmark_id == "bitgn/pac1-dev"
+    assert config.task_ids == ("task-1",)
 
 
 def test_config_requires_model(monkeypatch):

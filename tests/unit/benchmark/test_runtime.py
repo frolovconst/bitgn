@@ -1,5 +1,5 @@
-from benchmark.bitgn.protocol import ReportTaskCompletion
-from benchmark.bitgn.runtime import _normalize_grounding_refs
+from benchmark.bitgn.sandbox_protocol import ReportTaskCompletion
+from benchmark.bitgn.sandbox_runtime import _normalize_grounding_refs
 
 
 def test_normalize_grounding_refs_strips_leading_slashes_and_dedupes():

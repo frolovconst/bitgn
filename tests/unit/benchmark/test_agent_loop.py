@@ -1,5 +1,6 @@
-from benchmark.bitgn.agent_loop import run_task_loop
-from benchmark.bitgn.protocol import ReportTaskCompletion, ReqOutline, ReqRead, ToolExecution, ToolCommand
+from benchmark.bitgn.common import ToolExecution
+from benchmark.bitgn.sandbox_agent_loop import run_sandbox_task_loop
+from benchmark.bitgn.sandbox_protocol import ReportTaskCompletion, ReqOutline, ReqRead, SandboxToolCommand
 from model_clients.types import Message, ModelResponse, ModelSettings
 
 
@@ -19,9 +20,9 @@ class FakeModelClient:
 
 class FakeRuntime:
     def __init__(self) -> None:
-        self.commands: list[ToolCommand] = []
+        self.commands: list[SandboxToolCommand] = []
 
-    def execute(self, command: ToolCommand) -> ToolExecution:
+    def execute(self, command: SandboxToolCommand) -> ToolExecution:
         self.commands.append(command)
         if isinstance(command, ReqOutline):
             return ToolExecution(content='{"path":"/","files":[{"path":"AGENTS.MD"},{"path":"CLAUDE.MD"}]}')
@@ -52,7 +53,7 @@ def test_run_task_loop_completes_task():
     )
     runtime = FakeRuntime()
 
-    summary = run_task_loop(
+    summary = run_sandbox_task_loop(
         model_client=client,
         runtime=runtime,
         task_text="What should I say?",
@@ -85,7 +86,7 @@ def test_run_task_loop_tolerates_empty_plan_steps():
     )
     runtime = FakeRuntime()
 
-    summary = run_task_loop(
+    summary = run_sandbox_task_loop(
         model_client=client,
         runtime=runtime,
         task_text="What is 2+2=?",

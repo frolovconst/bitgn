@@ -13,14 +13,14 @@ wheels = [
 
 [[package]]
 name = "bitgn-api-connectrpc-python"
-version = "0.9.0.1.20260316101438+5e72a3f6bebf"
+version = "0.9.0.1.20260324104753+6b18c777b19a"
 source = { registry = "https://buf.build/gen/python" }
 dependencies = [
     { name = "bitgn-api-protocolbuffers-python" },
     { name = "connectrpc" },
 ]
 wheels = [
-    { url = "https://buf.build/gen/python/bitgn-api-connectrpc-python/bitgn_api_connectrpc_python-0.9.0.1.20260316101438+5e72a3f6bebf-py3-none-any.whl" },
+    { url = "https://buf.build/gen/python/bitgn-api-connectrpc-python/bitgn_api_connectrpc_python-0.9.0.1.20260324104753+6b18c777b19a-py3-none-any.whl" },
 ]
 
 [[package]]
@@ -73,7 +73,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bitgn-api-connectrpc-python", specifier = "==0.9.0.1.20260316101438+5e72a3f6bebf" },
+    { name = "bitgn-api-connectrpc-python", specifier = "==0.9.0.1.20260324104753+6b18c777b19a" },
     { name = "bitgn-api-protocolbuffers-python", specifier = "==34.1.0.1.20260324104753+6b18c777b19a" },
     { name = "pydantic", specifier = ">=2.12.5,<3" },
 ]

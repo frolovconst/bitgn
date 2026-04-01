@@ -14,9 +14,9 @@ from connectrpc.errors import ConnectError
 
 from model_clients.factory import create_model_client
 
-from .agent_loop import run_task_loop
 from .config import BitgnRunConfig
-from .runtime import BitgnMiniRuntimeExecutor
+from .sandbox_agent_loop import run_sandbox_task_loop
+from .sandbox_runtime import BitgnMiniRuntimeExecutor
 
 CLI_RED = "\x1B[31m"
 CLI_GREEN = "\x1B[32m"
@@ -53,12 +53,11 @@ def run_benchmark(config: BitgnRunConfig) -> int:
             print("Task:", trial.instruction)
 
             try:
-                summary = run_task_loop(
+                summary = _run_task_for_benchmark(
+                    config=config,
                     model_client=model_client,
-                    runtime=BitgnMiniRuntimeExecutor(trial.harness_url),
+                    harness_url=trial.harness_url,
                     task_text=trial.instruction,
-                    settings=config.generation,
-                    max_steps=config.max_steps,
                 )
 
                 print(f"{CLI_BLUE}AGENT ANSWER: {summary.answer}{CLI_CLR}")
@@ -91,3 +90,26 @@ def run_benchmark(config: BitgnRunConfig) -> int:
         print(f"FINAL: {total:0.2f}%")
 
     return exit_code
+
+
+def _run_task_for_benchmark(*, config: BitgnRunConfig, model_client, harness_url: str, task_text: str):
+    if config.benchmark_kind == "sandbox":
+        return run_sandbox_task_loop(
+            model_client=model_client,
+            runtime=BitgnMiniRuntimeExecutor(harness_url),
+            task_text=task_text,
+            settings=config.generation,
+            max_steps=config.max_steps,
+        )
+    if config.benchmark_kind == "pac1":
+        from .pac1_agent_loop import run_pac1_task_loop
+        from .pac1_runtime import BitgnPcmRuntimeExecutor
+
+        return run_pac1_task_loop(
+            model_client=model_client,
+            runtime=BitgnPcmRuntimeExecutor(harness_url),
+            task_text=task_text,
+            settings=config.generation,
+            max_steps=config.max_steps,
+        )
+    raise ValueError(f"Unsupported BitGN benchmark kind: {config.benchmark_kind}")

@@ -16,6 +16,11 @@ This workspace now also contains the BitGN benchmark baseline runner. Use it to:
 - connect to the BitGN API and score the agent against a benchmark
 - iterate on agent logic while keeping model access behind the current model-client abstraction
 
+Current versioned entrypoints:
+
+- `./scripts/run-bitgn-sandbox` for the mini-runtime sandbox benchmark
+- `./scripts/run-bitgn-pac1` for the PCM-runtime PAC1 benchmark
+
 ### 2) Local LLM hosting and experimentation
 
 Use `workspaces/local-llms/` for Ollama serving, model pulls, and local model chat.

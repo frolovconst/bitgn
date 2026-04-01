@@ -8,7 +8,7 @@ from .runner import run_benchmark
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run the Columbarium BitGN baseline agent against a benchmark."
+        description="Run the Columbarium BitGN agent against a supported benchmark."
     )
     parser.add_argument(
         "task_ids",
