@@ -10,6 +10,12 @@ Primary references:
 
 - [`workspaces/agent-runtime/README.md`](../../workspaces/agent-runtime/README.md)
 
+This workspace now also contains the BitGN benchmark baseline runner. Use it to:
+
+- run the repository's benchmark-facing Python agent
+- connect to the BitGN API and score the agent against a benchmark
+- iterate on agent logic while keeping model access behind the current model-client abstraction
+
 ### 2) Local LLM hosting and experimentation
 
 Use `workspaces/local-llms/` for Ollama serving, model pulls, and local model chat.
@@ -21,7 +27,8 @@ Primary references:
 
 ## Repository-level operating conventions
 
-- implement new features on a new branch by default; avoid developing feature work directly on `main`
+- start all new feature work on a new branch before making code changes
+- do not implement feature work directly on `main`
 - enter the correct workspace before running workspace-specific tooling
 - prefer versioned scripts and flake apps over ad hoc local commands
 - keep environment-specific state isolated where possible
