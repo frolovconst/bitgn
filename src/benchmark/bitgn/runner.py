@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import textwrap
+import time
 
 from bitgn.harness_connect import HarnessServiceClientSync
 from bitgn.harness_pb2 import (
@@ -26,7 +27,7 @@ CLI_CLR = "\x1B[0m"
 
 def run_benchmark(config: BitgnRunConfig) -> int:
     model_client = create_model_client(config.model)
-    scores: list[tuple[str, float]] = []
+    scores: list[tuple[str, float, float]] = []
     exit_code = 0
 
     try:
@@ -44,6 +45,7 @@ def run_benchmark(config: BitgnRunConfig) -> int:
 
             print("=" * 40)
             print(f"Starting Task: {task.task_id}")
+            task_started_at = time.perf_counter()
             trial = client.start_playground(
                 StartPlaygroundRequest(
                     benchmark_id=config.benchmark_id,
@@ -68,11 +70,16 @@ def run_benchmark(config: BitgnRunConfig) -> int:
                 print(f"{CLI_RED}Agent task failed: {exc}{CLI_CLR}")
 
             result = client.end_trial(EndTrialRequest(trial_id=trial.trial_id))
+            elapsed_seconds = time.perf_counter() - task_started_at
             if result.score >= 0:
-                scores.append((task.task_id, result.score))
+                scores.append((task.task_id, result.score, elapsed_seconds))
                 style = CLI_GREEN if result.score == 1 else CLI_RED
                 explain = textwrap.indent("\n".join(result.score_detail), "  ")
-                print(f"\n{style}Score: {result.score:0.2f}\n{explain}\n{CLI_CLR}")
+                print(
+                    f"\n{style}Score: {result.score:0.2f}\n"
+                    f"Elapsed: {_format_elapsed(elapsed_seconds)}\n"
+                    f"{explain}\n{CLI_CLR}"
+                )
 
     except ConnectError as exc:
         print(f"{exc.code}: {exc.message}")
@@ -82,11 +89,11 @@ def run_benchmark(config: BitgnRunConfig) -> int:
         return 130
 
     if scores:
-        for task_id, score in scores:
+        for task_id, score, elapsed_seconds in scores:
             style = CLI_GREEN if score == 1 else CLI_RED
-            print(f"{task_id}: {style}{score:0.2f}{CLI_CLR}")
+            print(f"{task_id}: {style}{score:0.2f}{CLI_CLR} ({_format_elapsed(elapsed_seconds)})")
 
-        total = sum(score for _, score in scores) / len(scores) * 100.0
+        total = sum(score for _, score, _ in scores) / len(scores) * 100.0
         print(f"FINAL: {total:0.2f}%")
 
     return exit_code
@@ -113,3 +120,11 @@ def _run_task_for_benchmark(*, config: BitgnRunConfig, model_client, harness_url
             max_steps=config.max_steps,
         )
     raise ValueError(f"Unsupported BitGN benchmark kind: {config.benchmark_kind}")
+
+
+def _format_elapsed(elapsed_seconds: float) -> str:
+    if elapsed_seconds < 60:
+        return f"{elapsed_seconds:0.2f}s"
+
+    minutes, seconds = divmod(elapsed_seconds, 60.0)
+    return f"{int(minutes)}m {seconds:0.2f}s"
