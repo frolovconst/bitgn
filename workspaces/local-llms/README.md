@@ -45,4 +45,10 @@ nix develop
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#ollama-serve
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen25-coder-3b-pull
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen25-coder-3b-chat
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-2b-pull
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-2b-chat
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-pull
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-chat
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-9b-pull
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-9b-chat
 ```

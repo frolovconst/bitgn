@@ -36,6 +36,7 @@ Start here depending on the task:
 
 - Prefer repo docs over assumptions.
 - Optimize for measurable benchmark progress rather than generic experimentation.
+- Start feature work on a new branch before making code changes. Do not implement new features directly on `main`.
 - If you discover something important that is durable, add or update the relevant doc in `docs/`.
 - If you make a significant architectural or workflow change, update the matching system-of-record file in the same change.
 - Keep top-level docs short and navigational. Move depth into the relevant folder under `docs/`.

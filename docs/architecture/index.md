@@ -7,6 +7,7 @@ This section describes the technical shape of the repository.
 - [`local-llms-workspace.md`](./local-llms-workspace.md): architecture and boundaries of the Ollama-focused local model workspace
 - [`agent-runtime-workspace.md`](./agent-runtime-workspace.md): separate Nix workspace for fast Python runtime and tests
 - [`agent-model-client.md`](./agent-model-client.md): minimal provider-agnostic model interface for switching local and API LLMs
+- [`bitgn-benchmark-runner.md`](./bitgn-benchmark-runner.md): benchmark-facing runtime that connects the agent to BitGN scoring
 - [`repository-structure.md`](./repository-structure.md): proposed repository layout and ownership boundaries for benchmark-focused development
 
 ## Architecture topics to capture here

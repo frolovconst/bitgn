@@ -29,6 +29,8 @@ class LocalOllamaClient:
         }
         if settings.max_tokens is not None:
             payload["options"]["num_predict"] = settings.max_tokens
+        if _expects_json_response(messages):
+            payload["format"] = "json"
 
         raw = _post_json(
             f"{self._base_url}/api/chat",
@@ -54,3 +56,19 @@ def _post_json(url: str, payload: dict[str, object], timeout_seconds: float) -> 
 
     with request.urlopen(req, timeout=timeout_seconds) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def _expects_json_response(messages: list[Message]) -> bool:
+    markers = (
+        "return json only",
+        "do not wrap the json",
+        "respond with json",
+        '"current_state"',
+        '"function"',
+        '"tool"',
+    )
+    for message in messages:
+        content = message.content.lower()
+        if any(marker in content for marker in markers):
+            return True
+    return False
