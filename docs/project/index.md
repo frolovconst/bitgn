@@ -1,30 +1,27 @@
-# Project Index
+# Project
 
-This section defines what the repository is for and how to reason about it.
+## Core priorities (equal weight)
 
-## Current understanding
+1. Maximize BitGN benchmark score.
+2. Keep architecture modular and replaceable (LLM, agent loop, strategies).
+3. Implement each new feature in a new branch.
+4. Keep an experiment platform where agent implementations can be swapped and tested through the benchmark interface.
 
-`columbarium` is a repository for building and iterating on an AI agent for BitGN benchmark challenges.
+## Current state
 
-The repository exists to support a tight benchmark loop:
+The central deliverable is the benchmark-facing agent loop.
+That loop is not implemented yet.
 
-- build or improve the agent
-- run it against the BitGN challenge environment
-- study failures and score changes
-- evolve the system toward stronger leaderboard performance
+`workspaces/local-llms/` is a supporting environment for local-model debugging and development, not the product itself.
 
-The `workspaces/local-llms/` workspace is supporting infrastructure for that goal. It is not the goal by itself.
+## Audience
 
-## Documents in this section
+Primary: coding agents.
+Secondary: human maintainers.
 
-- [`vision.md`](./vision.md): why this repository exists and what it is trying to enable
-- [`scope.md`](./scope.md): current scope, non-goals, and likely expansion areas
-- [`glossary.md`](./glossary.md): project-specific terminology
-- [`../references/bitgn-platform.md`](../references/bitgn-platform.md): verified external benchmark assumptions
+## Documents
 
-## Questions this section should answer
-
-- What problem space does this repository serve?
-- What counts as success for the project?
-- What are the current boundaries of the work?
-- Which words have precise meanings in this repository?
+- [`vision.md`](./vision.md)
+- [`scope.md`](./scope.md)
+- [`glossary.md`](./glossary.md)
+- [`../references/bitgn-platform.md`](../references/bitgn-platform.md)

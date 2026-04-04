@@ -1,16 +1,13 @@
 # Active Plans
 
-Add one markdown file per active or proposed plan.
+One markdown file per active/proposed plan.
 
-Suggested filename format:
+Filename: `YYYY-MM-DD-topic.md`
 
-- `YYYY-MM-DD-short-topic.md`
+Recommended sections: Goal, Scope, Steps, Status.
 
-Suggested sections:
+Current plans:
 
-- Goal
-- Why now
-- Scope
-- Risks
-- Steps
-- Status
+- [`2026-04-04-bitgn-intelligence.md`](./2026-04-04-bitgn-intelligence.md)
+- [`2026-04-04-minimal-bitgn-platform.md`](./2026-04-04-minimal-bitgn-platform.md)
+- [`2026-04-04-first-agent-version.md`](./2026-04-04-first-agent-version.md)

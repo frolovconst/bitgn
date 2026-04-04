@@ -1,35 +1,14 @@
 # BitGN Platform Reference
 
-## Purpose
+## Source
 
-This note captures the external assumptions about BitGN that currently shape the project.
+- URL: <https://bitgn.com/>
+- Last checked: 2026-03-24
 
-## Verified on
+## Working assumptions
 
-- Date checked: 2026-03-24
-- Source: <https://bitgn.com/>
+- Agents interact with challenge environments via API.
+- Platform provides deterministic scoring and feedback.
+- Results are compared on a leaderboard.
 
-## Current understanding
-
-BitGN presents itself as a benchmark and challenge platform for autonomous agents and the teams building them.
-
-Based on the public site as checked above:
-
-- agents connect to a simulated challenge environment through an API
-- the platform provides deterministic scoring
-- teams receive immediate evaluation feedback
-- results are tracked on a global leaderboard
-- the benchmark is meant to compare agent approaches under shared constraints
-
-## Why this matters for Columbarium
-
-These assumptions support the core project strategy:
-
-- optimize for measurable benchmark outcomes
-- build fast iteration loops
-- treat score, failure modes, and reliability as primary engineering feedback
-
-## Caution
-
-This document is not a substitute for official challenge rules or API docs for a specific BitGN round.
-When round-specific details matter, record them separately and date them.
+Use round-specific docs for rule or API details.

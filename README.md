@@ -1,19 +1,26 @@
 # columbarium
 
-Repository for building an AI agent to compete on BitGN benchmark challenges and climb the leaderboard.
+Build and evaluate personal AI agents for BitGN benchmark tasks.
 
-## Project Areas
+## Goal
 
-- `src/model_clients/` - provider-agnostic model client boundary with local (Ollama) and OpenAI adapters.
-- `workspaces/agent-runtime/` - Nix workspace for Python runtime development and fast tests.
-- `workspaces/local-llms/` - isolated workspace for local model runtime and Ollama-focused experimentation.
+Maximize BitGN score with fast, measurable iteration.
 
-## Repository Knowledge
+## Current focus
 
-- `AGENTS.md` - short agent-facing map for navigating the repository
-- `docs/` - system of record for durable project knowledge
-- `ARCHITECTURE.md` - high-level architecture entry point
+The main target is the benchmark-facing agent loop.
+That core implementation is still in progress.
 
-## Current Objective
+## Main areas
 
-Develop an agent that performs as strongly as possible on the BitGN benchmark platform.
+- `src/`: agent logic and supporting code for the benchmark-facing loop.
+- `src/model_clients/`: provider adapters behind one model-client interface.
+- `workspaces/agent-runtime/`: Python dev and test shell.
+- `workspaces/local-llms/`: local model runtime and Ollama workflows used to debug agent code without paid API usage.
+- `docs/`: source-of-truth project docs.
+
+## Start here
+
+- `AGENTS.md`
+- `docs/README.md`
+- `docs/project/index.md`

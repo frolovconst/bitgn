@@ -1,33 +1,16 @@
 # Experiment Note Template
 
 ## Title
-
 TODO
 
 ## Date
-
 YYYY-MM-DD
 
-## Owner
-
+## Commit SHA
 TODO
 
-## Question
-
+## Benchmark score
 TODO
 
-## Setup
-
-TODO
-
-## Result
-
-TODO
-
-## Interpretation
-
-TODO
-
-## Follow-up
-
+## Notes
 TODO

@@ -1,15 +1,5 @@
-# Operations Index
+# Operations
 
-This section is for practical operating knowledge.
+Operational rules and runbooks.
 
-## Current documents
-
-- [`runbook.md`](./runbook.md): repository-level operational overview
-
-## What belongs here
-
-- setup steps
-- environment management
-- debugging guidance
-- troubleshooting checklists
-- release or publish workflows, if those appear later
+- [`runbook.md`](./runbook.md)

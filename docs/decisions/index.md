@@ -1,20 +1,6 @@
-# Decisions Index
+# Decisions
 
-Record major technical or workflow decisions here.
+Record decisions that affect future work.
 
-Use one file per decision when the rationale matters over time.
-
-## Good candidates for a decision record
-
-- adopting a new workspace pattern
-- changing model storage strategy
-- introducing evaluation infrastructure
-- choosing one toolchain over another
-
-## Template
-
-Use [`docs/templates/decision-record.md`](../templates/decision-record.md) for new entries.
-
-## Current status
-
-No formal decision records exist yet.
+Use one file per decision.
+Template: [`docs/templates/decision-record.md`](../templates/decision-record.md)

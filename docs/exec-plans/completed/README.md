@@ -1,9 +1,5 @@
 # Completed Plans
 
-Move finished plan documents here to preserve implementation history.
+Move finished plans here.
 
-When a plan is completed, add a short outcome note near the top:
-
-- what changed
-- whether the goal was met
-- follow-up work, if any
+Add a short outcome summary: result, goal met/not met, follow-up.
