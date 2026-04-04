@@ -1,18 +1,22 @@
-# Architecture Index
+# Architecture
 
-This section describes the technical shape of the repository.
+Keep architecture simple and replaceable.
 
-## Current documents
+## Core boundary
 
-- [`local-llms-workspace.md`](./local-llms-workspace.md): architecture and boundaries of the Ollama-focused local model workspace
-- [`agent-runtime-workspace.md`](./agent-runtime-workspace.md): separate Nix workspace for fast Python runtime and tests
-- [`agent-model-client.md`](./agent-model-client.md): minimal provider-agnostic model interface for switching local and API LLMs
-- [`repository-structure.md`](./repository-structure.md): proposed repository layout and ownership boundaries for benchmark-focused development
+- Platform layer: benchmark API integration and run plumbing.
+- Agent layer: the benchmark-facing loop, strategy, planning, memory, and tool-use behavior.
 
-## Architecture topics to capture here
+Use adapters where needed; avoid coupling core agent logic to one provider or loop design.
 
-- repository layout and ownership boundaries
-- data and state locations
-- environment boundaries
-- key scripts, services, and interfaces
-- assumptions that affect implementation work
+## Current emphasis
+
+The main architectural concern is the agent loop.
+Workspace docs exist to support development around that core.
+
+## Docs
+
+- [`repository-structure.md`](./repository-structure.md)
+- [`agent-model-client.md`](./agent-model-client.md)
+- [`agent-runtime-workspace.md`](./agent-runtime-workspace.md)
+- [`local-llms-workspace.md`](./local-llms-workspace.md)

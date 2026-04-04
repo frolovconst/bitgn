@@ -1,45 +1,21 @@
 # agent-runtime workspace
 
-This workspace provides a Nix development shell focused on:
+Default workspace for Python development and fast tests.
 
-- running the main Python code for the benchmark agent
-- running fast local tests without Ollama-specific tooling
-
-## Enter the environment
-
-From repository root:
+## Enter shell
 
 ```bash
 nix develop ./workspaces/agent-runtime
 ```
 
-From inside this directory:
+## Includes
 
-```bash
-cd workspaces/agent-runtime
-nix develop
-```
+`python3`, `uv`, `git`, `jq`, `ripgrep`, `curl`
 
-## Included tools
-
-- python3
-- uv
-- git
-- jq
-- ripgrep
-- curl
-
-## Typical setup and test flow
+## Typical test
 
 ```bash
 uv run pytest
 ```
 
-To include the real local-model integration test:
-
-```bash
-uv run pytest --run-local-model
-```
-
-Use this shell for model-client unit tests and general Python development.
-Use `workspaces/local-llms/` when you need an Ollama runtime.
+Use `workspaces/local-llms/` for Ollama runtime workflows.

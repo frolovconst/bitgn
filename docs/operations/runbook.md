@@ -1,37 +1,17 @@
-# Repository Runbook
+# Runbook
 
-## Current operator workflows
+## Workflow rules
 
-### 1) Fast Python runtime + tests
+- New feature -> new branch.
+- Decompose large tasks before coding.
+- Use the workspace that matches the task.
 
-Use `workspaces/agent-runtime/` for quick local development and unit tests.
+## Workspaces
 
-Primary references:
+1. `workspaces/agent-runtime/`: default workspace for agent-loop development and tests.
+2. `workspaces/local-llms/`: Ollama and local-model workflows used when local inference helps debugging or experiments.
 
-- [`workspaces/agent-runtime/README.md`](../../workspaces/agent-runtime/README.md)
+## Experiment record minimum
 
-### 2) Local LLM hosting and experimentation
-
-Use `workspaces/local-llms/` for Ollama serving, model pulls, and local model chat.
-
-Primary references:
-
-- [`workspaces/local-llms/README.md`](../../workspaces/local-llms/README.md)
-- [`workspaces/local-llms/RUNBOOK.md`](../../workspaces/local-llms/RUNBOOK.md)
-
-## Repository-level operating conventions
-
-- implement new features on a new branch by default; avoid developing feature work directly on `main`
-- enter the correct workspace before running workspace-specific tooling
-- prefer versioned scripts and flake apps over ad hoc local commands
-- keep environment-specific state isolated where possible
-- document any repeated operational procedure in this section or in the relevant workspace runbook
-
-## Add new runbooks here when needed
-
-Examples:
-
-- benchmark execution
-- experiment result capture
-- environment reset procedures
-- dependency update routines
+- commit SHA
+- benchmark score

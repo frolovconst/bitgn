@@ -1,16 +1,7 @@
 # Active Plans
 
-Add one markdown file per active or proposed plan.
+One markdown file per active/proposed plan.
 
-Suggested filename format:
+Filename: `YYYY-MM-DD-topic.md`
 
-- `YYYY-MM-DD-short-topic.md`
-
-Suggested sections:
-
-- Goal
-- Why now
-- Scope
-- Risks
-- Steps
-- Status
+Recommended sections: Goal, Scope, Steps, Status.

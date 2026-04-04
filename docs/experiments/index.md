@@ -1,23 +1,9 @@
-# Experiments Index
+# Experiments
 
-Use this section to track exploratory work without losing the outcome.
+Track experiment outcomes.
 
-## Suggested structure
+Minimum required record:
+- commit SHA
+- benchmark score
 
-- one file per experiment or experiment family
-- each file should state the question, method, outcome, and next step
-
-## Recommended template
-
-- Title
-- Date
-- Owner
-- Question
-- Setup
-- Result
-- Interpretation
-- Follow-up
-
-## Current status
-
-No experiment notes have been formalized here yet.
+Optional: question, setup, notes, follow-up.
