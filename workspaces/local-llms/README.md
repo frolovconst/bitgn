@@ -49,4 +49,6 @@ nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-ll
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-2b-chat
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-pull
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-chat
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-9b-pull
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-9b-chat
 ```
