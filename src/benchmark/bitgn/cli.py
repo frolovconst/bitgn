@@ -22,6 +22,13 @@ from .config import (
 from .platform import BitgnBenchmarkPlatform, TrialLaunchMode
 from .runner import BenchmarkRunService
 
+CLI_RESET = "\x1b[0m"
+CLI_BLUE = "\x1b[34m"
+CLI_CYAN = "\x1b[36m"
+CLI_GREEN = "\x1b[32m"
+CLI_YELLOW = "\x1b[33m"
+CLI_RED = "\x1b[31m"
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -96,7 +103,6 @@ def parse_config(argv: Sequence[str] | None = None) -> BenchmarkRunConfig:
         benchmark_host=args.benchmark_host,
         benchmark_id=args.benchmark_id,
         task_id=args.task_id,
-        all_tasks=args.all_tasks,
         allow_submit=args.allow_submit,
         agent_mode=args.agent_mode,
         debug=args.debug,
@@ -134,7 +140,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if config.debug:
         _print_available_tools(config.benchmark_id, platform.list_available_tools(config.benchmark_id))
+        _print_run_debug_header(config)
 
+    summaries = []
     for index, task_id in enumerate(task_ids, start=1):
         agent_actions: list[str] = []
         agent_loop = _create_agent_loop(
@@ -145,8 +153,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
 
-        task_config = replace(config, task_id=task_id, all_tasks=False)
+        task_config = replace(config, task_id=task_id)
         summary = service.run_once(task_config)
+        summaries.append(summary)
         _print_task_summary(
             summary,
             debug=config.debug,
@@ -155,6 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             agent_actions=agent_actions,
         )
 
+    _print_run_footer(summaries)
     return 0
 
 
@@ -188,21 +198,30 @@ def _print_task_summary(
     agent_actions: list[str],
 ) -> None:
     divider = "=" * 72
-    print(divider)
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
+    print(f"{CLI_BLUE}Starting benchmark task run{CLI_RESET}")
     print(f"Task {index}/{total} | {summary.task_id}")
-    print(divider)
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
     print(f"trial_id: {summary.trial_id}")
     print(f"benchmark_id: {summary.benchmark_id}")
     print(f"task_id: {summary.task_id}")
+    print("instruction:")
+    print(summary.instruction)
+    print("agent_final_response:")
+    print(f"- outcome: {summary.agent_outcome.value}")
+    print(f"- message: {summary.agent_message}")
+    if summary.agent_refs:
+        print("- refs:")
+        for ref in summary.agent_refs:
+            print(f"  - {ref}")
+    else:
+        print("- refs: []")
     print(f"submitted: {summary.submitted}")
-    print(f"score: {summary.score}")
+    print(f"score: {_render_score(summary.score)}")
     print("score_detail:")
     for line in summary.score_detail:
         print(f"- {line}")
     if debug:
-        print("debug_detail:")
-        for line in summary.debug_detail:
-            print(f"- {line}")
         print("agent_actions:")
         if agent_actions:
             for action in agent_actions:
@@ -213,11 +232,54 @@ def _print_task_summary(
 
 def _print_available_tools(benchmark_id: str, tools: list[str]) -> None:
     divider = "=" * 72
-    print(divider)
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
     print(f"Available runtime tools | benchmark={benchmark_id}")
-    print(divider)
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
     for tool in tools:
         print(f"- {tool}")
+
+
+def _print_run_debug_header(config: BenchmarkRunConfig) -> None:
+    divider = "=" * 72
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
+    print(f"{CLI_BLUE}Benchmark run settings{CLI_RESET}")
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
+    print("debug_detail:")
+    print("- debug=true")
+    print(f"- provider={config.model_provider}")
+    print(f"- model={config.model_name}")
+    print(f"- model_base_url={config.model_base_url}")
+    print(f"- benchmark_host={config.benchmark_host}")
+    print(f"- benchmark_id={config.benchmark_id}")
+    print(f"- agent_mode={config.agent_mode}")
+    print(f"- trial_launch_mode={config.trial_launch_mode}")
+    print(f"- llm_trace={'enabled' if config.agent_mode == 'llm' else 'disabled'}")
+
+
+def _render_score(score: float | None) -> str:
+    if score is None:
+        return "None"
+    if score >= 1.0:
+        return f"{CLI_GREEN}{score}{CLI_RESET}"
+    if score <= 0.0:
+        return f"{CLI_RED}{score}{CLI_RESET}"
+    return f"{CLI_YELLOW}{score}{CLI_RESET}"
+
+
+def _print_run_footer(summaries) -> None:
+    divider = "=" * 72
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
+    print(f"{CLI_BLUE}Run summary{CLI_RESET}")
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
+    print("task_scores:")
+    for summary in summaries:
+        print(f"- {summary.task_id}: {_render_score(summary.score)}")
+    numeric_scores = [summary.score for summary in summaries if summary.score is not None]
+    if numeric_scores:
+        avg = sum(numeric_scores) / len(numeric_scores)
+        print(f"overall_average: {_render_score(avg)}")
+    else:
+        print("overall_average: n/a")
 
 
 if __name__ == "__main__":

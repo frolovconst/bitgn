@@ -306,6 +306,7 @@ class LlmToolAgentLoop:
             if content:
                 messages.append(Message(role="assistant", content=content))
             self._emit(f"llm_step:{step}:finish_reason={response.finish_reason or 'unknown'}")
+            self._emit(f"llm_step:{step}:output={_truncate_for_log(content or '<empty>')}")
 
             call = _extract_tool_call(response.raw, content)
             if call is None:
@@ -614,3 +615,9 @@ def _format_response_payload(response: Any) -> str:
         return json.dumps(payload, ensure_ascii=True, sort_keys=True)
     except Exception:
         return str(response)
+
+
+def _truncate_for_log(value: str, max_chars: int = 400) -> str:
+    if len(value) <= max_chars:
+        return value
+    return f"{value[:max_chars]}...(truncated)"

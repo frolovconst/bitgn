@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .config import BenchmarkRunConfig
-from .contracts import AgentLoop, BenchmarkPlatform, TrialResult, TrialSpec
+from .contracts import AgentLoop, BenchmarkPlatform, TrialOutcome, TrialResult, TrialSpec
 
 
 @dataclass(frozen=True)
@@ -11,6 +11,10 @@ class RunSummary:
     trial_id: str
     benchmark_id: str
     task_id: str
+    instruction: str
+    agent_message: str
+    agent_outcome: TrialOutcome
+    agent_refs: list[str]
     submitted: bool
     score: float | None
     score_detail: list[str]
@@ -36,12 +40,25 @@ class BenchmarkRunService:
         if config.allow_submit:
             self._platform.submit_answer(trial.trial_id, answer)
             result = self._platform.end_trial(trial.trial_id)
-            return _to_summary(config, result, submitted=True, debug_detail=debug_lines)
+            return _to_summary(
+                config,
+                result,
+                instruction=trial.instruction,
+                agent_message=answer.message,
+                agent_outcome=answer.outcome,
+                agent_refs=list(answer.refs),
+                submitted=True,
+                debug_detail=debug_lines,
+            )
 
         return RunSummary(
             trial_id=trial.trial_id,
             benchmark_id=config.benchmark_id,
             task_id=config.task_id,
+            instruction=trial.instruction,
+            agent_message=answer.message,
+            agent_outcome=answer.outcome,
+            agent_refs=list(answer.refs),
             submitted=False,
             score=None,
             score_detail=[
@@ -56,6 +73,10 @@ class BenchmarkRunService:
 def _to_summary(
     config: BenchmarkRunConfig,
     result: TrialResult,
+    instruction: str,
+    agent_message: str,
+    agent_outcome: TrialOutcome,
+    agent_refs: list[str],
     submitted: bool,
     debug_detail: list[str],
 ) -> RunSummary:
@@ -63,6 +84,10 @@ def _to_summary(
         trial_id=result.trial_id,
         benchmark_id=config.benchmark_id,
         task_id=config.task_id,
+        instruction=instruction,
+        agent_message=agent_message,
+        agent_outcome=agent_outcome,
+        agent_refs=agent_refs,
         submitted=submitted,
         score=result.score,
         score_detail=result.score_detail,
@@ -81,7 +106,6 @@ def _build_debug_lines(config: BenchmarkRunConfig) -> list[str]:
         f"benchmark_host={config.benchmark_host}",
         f"benchmark_id={config.benchmark_id}",
         f"task_id={config.task_id or '<all-tasks>'}",
-        f"all_tasks={config.all_tasks}",
         f"agent_mode={config.agent_mode}",
         f"trial_launch_mode={config.trial_launch_mode}",
         f"llm_trace={'enabled' if config.agent_mode == 'llm' else 'disabled'}",

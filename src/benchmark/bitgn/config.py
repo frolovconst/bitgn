@@ -11,7 +11,6 @@ class BenchmarkRunConfig:
     benchmark_host: str
     benchmark_id: str
     task_id: str | None
-    all_tasks: bool
     allow_submit: bool
     agent_mode: str
     debug: bool

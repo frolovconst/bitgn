@@ -7,7 +7,6 @@ def test_parse_config_defaults_to_local_qwen():
     config = parse_config(["--task-id", "t01"])
 
     assert config.task_id == "t01"
-    assert config.all_tasks is False
     assert config.agent_mode == "llm"
     assert config.model_provider == "local"
     assert config.debug is False
@@ -53,7 +52,6 @@ def test_parse_config_agent_mode_llm():
 def test_parse_config_all_tasks_mode():
     config = parse_config(["--all-tasks"])
 
-    assert config.all_tasks is True
     assert config.task_id is None
 
 

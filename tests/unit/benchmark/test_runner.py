@@ -11,7 +11,6 @@ def _config(allow_submit: bool, debug: bool = False) -> BenchmarkRunConfig:
         benchmark_host="https://api.bitgn.com",
         benchmark_id="bitgn/pac1-dev",
         task_id="t01",
-        all_tasks=False,
         allow_submit=allow_submit,
         agent_mode="placeholder",
         debug=debug,
@@ -68,7 +67,7 @@ def test_run_once_requires_concrete_task_id():
         platform=PlaceholderBenchmarkPlatform("https://api.bitgn.com"),
         agent_loop=PlaceholderAgentLoop(),
     )
-    config = replace(_config(allow_submit=False), task_id=None, all_tasks=True)
+    config = replace(_config(allow_submit=False), task_id=None)
 
     try:
         service.run_once(config)
