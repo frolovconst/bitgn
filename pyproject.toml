@@ -13,6 +13,16 @@ dependencies = []
 dev = [
   "pytest>=8.2,<10",
 ]
+notebook = [
+  "jupyterlab>=4.2,<5",
+]
+bitgn-playground = [
+  "bitgn-api-connectrpc-python==0.9.0.1.20260324104753+6b18c777b19a",
+  "bitgn-api-protocolbuffers-python==34.1.0.1.20260324104753+6b18c777b19a",
+]
+
+[[tool.uv.index]]
+url = "https://buf.build/gen/python"
 
 [tool.uv]
 default-groups = ["dev"]

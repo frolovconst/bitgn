@@ -38,6 +38,7 @@ Start here depending on the task:
 
 ## Working rules for agents
 
+- Before implementing a new feature, create and switch to a non-`main` branch.
 - Prefer repo docs over assumptions.
 - Optimize for measurable benchmark progress rather than generic experimentation.
 - Prefer small, reviewable changes over large bundled updates.
