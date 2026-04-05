@@ -53,8 +53,9 @@ class OpenAIModelClient:
             headers={"Authorization": f"Bearer {self._resolve_api_key()}"},
         )
         first_choice = raw["choices"][0]
+        message = first_choice.get("message", {})
         return ModelResponse(
-            content=first_choice["message"]["content"],
+            content=(message.get("content") or ""),
             model=raw.get("model", self._model),
             provider="openai",
             finish_reason=first_choice.get("finish_reason"),

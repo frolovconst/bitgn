@@ -84,5 +84,5 @@ def _build_debug_lines(config: BenchmarkRunConfig) -> list[str]:
         f"all_tasks={config.all_tasks}",
         f"agent_mode={config.agent_mode}",
         f"trial_launch_mode={config.trial_launch_mode}",
-        "llm_trace=not_implemented_yet",
+        f"llm_trace={'enabled' if config.agent_mode == 'llm' else 'disabled'}",
     ]

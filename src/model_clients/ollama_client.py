@@ -43,8 +43,9 @@ class LocalOllamaClient:
             payload=payload,
             timeout_seconds=settings.timeout_seconds,
         )
+        message = raw.get("message", {})
         return ModelResponse(
-            content=raw["message"]["content"],
+            content=(message.get("content") or ""),
             model=raw.get("model", self._model),
             provider="local",
             finish_reason=raw.get("done_reason"),

@@ -4,10 +4,11 @@ import argparse
 from dataclasses import replace
 from typing import Sequence
 
+from model_clients.base import ModelClient
 from model_clients.factory import create_model_client
-from model_clients.types import ModelClientConfig
+from model_clients.types import ModelClientConfig, ModelSettings
 
-from .agent_loop import DumbAgentLoop, PlaceholderAgentLoop
+from .agent_loop import DumbAgentLoop, LlmToolAgentLoop, PlaceholderAgentLoop
 from .config import (
     DEFAULT_AGENT_MODE,
     BenchmarkRunConfig,
@@ -38,9 +39,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-submit", action="store_true", help="Submit answer and end trial")
     parser.add_argument(
         "--agent-mode",
-        choices=["dumb", "placeholder"],
+        choices=["llm", "dumb", "placeholder"],
         default=DEFAULT_AGENT_MODE,
-        help="Agent implementation mode. Use dumb for end-to-end connectivity checks.",
+        help="Agent implementation mode. Use llm for tool-using task solving.",
     )
     parser.add_argument(
         "--trial-launch-mode",
@@ -111,9 +112,7 @@ def parse_config(argv: Sequence[str] | None = None) -> BenchmarkRunConfig:
 def main(argv: Sequence[str] | None = None) -> int:
     config = parse_config(argv)
 
-    # Construct and validate model client now so provider/model wiring stays
-    # exercised even before agent loop logic is implemented.
-    _ = create_model_client(
+    model_client = create_model_client(
         ModelClientConfig(
             provider=config.model_provider,
             model=config.model_name,
@@ -138,7 +137,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     for index, task_id in enumerate(task_ids, start=1):
         agent_actions: list[str] = []
-        agent_loop = _create_agent_loop(config=config, platform=platform, agent_actions=agent_actions)
+        agent_loop = _create_agent_loop(
+            config=config,
+            platform=platform,
+            model_client=model_client,
+            agent_actions=agent_actions,
+        )
         service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
 
         task_config = replace(config, task_id=task_id, all_tasks=False)
@@ -157,9 +161,17 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _create_agent_loop(
     config: BenchmarkRunConfig,
     platform: BitgnBenchmarkPlatform,
+    model_client: ModelClient,
     agent_actions: list[str],
 ):
     action_sink = agent_actions.append if config.debug else None
+    if config.agent_mode == "llm":
+        return LlmToolAgentLoop(
+            model_client=model_client,
+            available_tools=platform.list_available_tools(config.benchmark_id),
+            settings=ModelSettings(timeout_seconds=config.model_timeout_seconds),
+            action_sink=action_sink,
+        )
     if config.agent_mode == "dumb":
         return DumbAgentLoop(
             call_random_tool_fn=platform.call_random_tool,

@@ -8,11 +8,11 @@ def test_parse_config_defaults_to_local_qwen():
 
     assert config.task_id == "t01"
     assert config.all_tasks is False
-    assert config.agent_mode == "dumb"
+    assert config.agent_mode == "llm"
     assert config.model_provider == "local"
     assert config.debug is False
     assert config.trial_launch_mode == "playground"
-    assert config.model_name == "qwen3.5:latest"
+    assert config.model_name == "qwen3.5:4b"
     assert config.model_base_url == "http://127.0.0.1:11434"
     assert config.model_api_key_env is None
 
@@ -42,6 +42,12 @@ def test_parse_config_agent_mode():
     config = parse_config(["--task-id", "t01", "--agent-mode", "placeholder"])
 
     assert config.agent_mode == "placeholder"
+
+
+def test_parse_config_agent_mode_llm():
+    config = parse_config(["--task-id", "t01", "--agent-mode", "llm"])
+
+    assert config.agent_mode == "llm"
 
 
 def test_parse_config_all_tasks_mode():
