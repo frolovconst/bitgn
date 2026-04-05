@@ -12,6 +12,7 @@ class BenchmarkRunConfig:
     benchmark_id: str
     task_id: str
     allow_submit: bool
+    debug: bool
     model_provider: str
     model_name: str
     model_base_url: str

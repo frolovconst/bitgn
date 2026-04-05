@@ -26,11 +26,18 @@ Example:
 bitgn-run --task-id t01
 ```
 
+Debug mode:
+
+```bash
+bitgn-run --task-id t01 --debug
+```
+
 Current behavior is intentionally placeholder-only:
 
 - initializes model-provider wiring (`local`/`openai`)
 - executes a mock platform + mock agent-loop flow
 - does not yet call the real BitGN API or solve tasks
+- in `--debug` mode, prints detailed run diagnostics (future hook for full LLM traces)
 
 ## Experiment record minimum
 

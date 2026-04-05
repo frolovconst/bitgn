@@ -28,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--benchmark-id", default=env_default_benchmark_id())
     parser.add_argument("--task-id", required=True, help="Benchmark task id, for example: t01")
     parser.add_argument("--allow-submit", action="store_true", help="Submit answer and end trial")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable detailed debug output. Reserved for future full LLM traces.",
+    )
 
     parser.add_argument(
         "--model-provider",
@@ -67,6 +72,7 @@ def parse_config(argv: Sequence[str] | None = None) -> BenchmarkRunConfig:
         benchmark_id=args.benchmark_id,
         task_id=args.task_id,
         allow_submit=args.allow_submit,
+        debug=args.debug,
         model_provider=provider,
         model_name=args.model_name or default_model_name(provider),
         model_base_url=args.model_base_url or default_model_base_url(provider),
@@ -104,6 +110,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     print("score_detail:")
     for line in summary.score_detail:
         print(f"- {line}")
+    if config.debug:
+        print("debug_detail:")
+        for line in summary.debug_detail:
+            print(f"- {line}")
 
     return 0
 
