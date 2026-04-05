@@ -1,3 +1,7 @@
+import sys
+import types
+
+from benchmark.bitgn import agent_loop as agent_loop_mod
 from benchmark.bitgn.agent_loop import DumbAgentLoop, LlmToolAgentLoop, PlaceholderAgentLoop
 from benchmark.bitgn.contracts import ToolCallTrace, TrialHandle, TrialOutcome
 from model_clients.types import Message, ModelResponse, ModelSettings
@@ -181,3 +185,124 @@ def test_llm_agent_returns_internal_error_on_unknown_tool():
 
     assert answer.outcome == TrialOutcome.ERR_INTERNAL
     assert "unsupported tool" in answer.message.lower()
+
+
+def test_llm_agent_reprompts_when_completion_missing_refs():
+    model_client = _FakeModelClient(
+        responses=[
+            ModelResponse(
+                content="",
+                model="qwen3.5:4b",
+                provider="local",
+                finish_reason="tool_calls",
+                raw={
+                    "message": {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "report_completion",
+                                    "arguments": '{"message":"Done","outcome":"OUTCOME_OK"}',
+                                }
+                            }
+                        ]
+                    }
+                },
+            ),
+            ModelResponse(
+                content="",
+                model="qwen3.5:4b",
+                provider="local",
+                finish_reason="tool_calls",
+                raw={
+                    "message": {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "report_completion",
+                                    "arguments": '{"message":"Done","outcome":"OUTCOME_OK","refs":["AGENTS.MD"]}',
+                                }
+                            }
+                        ]
+                    }
+                },
+            ),
+        ]
+    )
+    actions = []
+    agent = LlmToolAgentLoop(
+        model_client=model_client,
+        available_tools=[],
+        max_steps=2,
+        action_sink=actions.append,
+    )
+
+    answer = agent.solve_trial(_trial())
+
+    assert answer.outcome == TrialOutcome.OK
+    assert answer.refs == ["AGENTS.MD"]
+    assert any("invalid_report_completion_missing_refs" in action for action in actions)
+    assert len(model_client.calls) == 2
+
+
+def test_call_runtime_tool_mini_supports_read_write_delete(monkeypatch):
+    calls = []
+
+    class _FakeMiniRuntime:
+        def __init__(self, _harness_url):
+            pass
+
+        def read(self, request):
+            calls.append(("read", request.path))
+            return {"ok": True}
+
+        def write(self, request):
+            calls.append(("write", request.path, request.content))
+            return {"ok": True}
+
+        def delete(self, request):
+            calls.append(("delete", request.path))
+            return {"ok": True}
+
+    class _PathRequest:
+        def __init__(self, path):
+            self.path = path
+
+    class _WriteRequest:
+        def __init__(self, path, content):
+            self.path = path
+            self.content = content
+
+    fake_connect = types.ModuleType("bitgn.vm.mini_connect")
+    fake_connect.MiniRuntimeClientSync = _FakeMiniRuntime
+
+    fake_pb2 = types.ModuleType("bitgn.vm.mini_pb2")
+    fake_pb2.ReadRequest = _PathRequest
+    fake_pb2.WriteRequest = _WriteRequest
+    fake_pb2.DeleteRequest = _PathRequest
+    fake_pb2.OutlineRequest = _PathRequest
+    fake_pb2.ListRequest = _PathRequest
+
+    class _SearchRequest:
+        def __init__(self, path, pattern, count):
+            self.path = path
+            self.pattern = pattern
+            self.count = count
+
+    fake_pb2.SearchRequest = _SearchRequest
+
+    monkeypatch.setitem(sys.modules, "bitgn.vm.mini_connect", fake_connect)
+    monkeypatch.setitem(sys.modules, "bitgn.vm.mini_pb2", fake_pb2)
+
+    _ = agent_loop_mod._call_runtime_tool_mini("https://vm.example", "Read", {"path": "/tmp/a.txt"})
+    _ = agent_loop_mod._call_runtime_tool_mini(
+        "https://vm.example",
+        "Write",
+        {"path": "/tmp/a.txt", "content": "hello"},
+    )
+    _ = agent_loop_mod._call_runtime_tool_mini("https://vm.example", "Delete", {"path": "/tmp/a.txt"})
+
+    assert calls == [
+        ("read", "/tmp/a.txt"),
+        ("write", "/tmp/a.txt", "hello"),
+        ("delete", "/tmp/a.txt"),
+    ]

@@ -31,7 +31,7 @@ _REPORT_COMPLETION_TOOL = ToolDefinition(
             "refs": {"type": "array", "items": {"type": "string"}},
             "completed_steps_laconic": {"type": "array", "items": {"type": "string"}},
         },
-        "required": ["message", "outcome"],
+        "required": ["message", "outcome", "refs"],
         "additionalProperties": False,
     },
 )
@@ -172,10 +172,14 @@ _TOOL_SCHEMAS: dict[str, ToolDefinition] = {
 }
 
 _SYSTEM_PROMPT = (
-    "You are a benchmark task-solving agent.\n"
-    "Use runtime tools to inspect and edit files.\n"
+    "You are a pragmatic benchmark task-solving assistant.\n"
+    "Use runtime tools to inspect/edit files and keep changes minimal.\n"
     "Call exactly one tool each step.\n"
-    "When done or blocked, call report_completion with final message and outcome."
+    "When done or blocked, call report_completion.\n"
+    "In report_completion always include:\n"
+    "- message: concise final answer\n"
+    "- outcome: one of the provided outcome enums\n"
+    "- refs: array of exact file paths (case-sensitive) that grounded the answer; use [] only if no file grounded it."
 )
 
 
@@ -316,6 +320,19 @@ class LlmToolAgentLoop:
             tool_name, arguments = call
             self._emit(f"llm_step:{step}:tool_call={tool_name}")
             if tool_name == _REPORT_COMPLETION_TOOL.name:
+                if not isinstance(arguments.get("refs"), list):
+                    messages.append(
+                        Message(
+                            role="user",
+                            content=(
+                                "Invalid report_completion: `refs` must be present and must be an array "
+                                "of exact case-sensitive file paths (or [] when none). "
+                                "Call report_completion again."
+                            ),
+                        )
+                    )
+                    self._emit(f"llm_step:{step}:invalid_report_completion_missing_refs")
+                    continue
                 return _to_agent_answer(arguments)
 
             if tool_name not in self._available_tools:
@@ -553,7 +570,7 @@ def _call_runtime_tool_pcm(harness_url: str, tool_name: str, arguments: dict[str
 
 def _call_runtime_tool_mini(harness_url: str, tool_name: str, arguments: dict[str, Any]) -> ToolCallTrace:
     from bitgn.vm.mini_connect import MiniRuntimeClientSync
-    from bitgn.vm.mini_pb2 import ListRequest, OutlineRequest, SearchRequest
+    from bitgn.vm.mini_pb2 import DeleteRequest, ListRequest, OutlineRequest, ReadRequest, SearchRequest, WriteRequest
 
     runtime = MiniRuntimeClientSync(harness_url)
     if tool_name == "Outline":
@@ -568,8 +585,17 @@ def _call_runtime_tool_mini(harness_url: str, tool_name: str, arguments: dict[st
                 count=int(arguments.get("count", arguments.get("limit", 10))),
             )
         )
-    elif tool_name in {"Read", "Write", "Delete"}:
-        raise ValueError(f"MINI runtime tool not implemented in loop yet: {tool_name}")
+    elif tool_name == "Read":
+        response = runtime.read(ReadRequest(path=str(arguments.get("path", ""))))
+    elif tool_name == "Write":
+        response = runtime.write(
+            WriteRequest(
+                path=str(arguments.get("path", "")),
+                content=str(arguments.get("content", "")),
+            )
+        )
+    elif tool_name == "Delete":
+        response = runtime.delete(DeleteRequest(path=str(arguments.get("path", ""))))
     else:
         raise ValueError(f"Unsupported MINI tool: {tool_name}")
 
