@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from benchmark.bitgn.agent_loop import PlaceholderAgentLoop
 from benchmark.bitgn.config import BenchmarkRunConfig
 from benchmark.bitgn.platform import PlaceholderBenchmarkPlatform
@@ -9,8 +11,11 @@ def _config(allow_submit: bool, debug: bool = False) -> BenchmarkRunConfig:
         benchmark_host="https://api.bitgn.com",
         benchmark_id="bitgn/pac1-dev",
         task_id="t01",
+        all_tasks=False,
         allow_submit=allow_submit,
+        agent_mode="placeholder",
         debug=debug,
+        trial_launch_mode="playground",
         model_provider="local",
         model_name="qwen3.5:latest",
         model_base_url="http://127.0.0.1:11434",
@@ -56,3 +61,17 @@ def test_run_once_with_debug_includes_diagnostics():
 
     assert any("debug=true" == line for line in summary.debug_detail)
     assert any(line.startswith("provider=local") for line in summary.debug_detail)
+
+
+def test_run_once_requires_concrete_task_id():
+    service = BenchmarkRunService(
+        platform=PlaceholderBenchmarkPlatform("https://api.bitgn.com"),
+        agent_loop=PlaceholderAgentLoop(),
+    )
+    config = replace(_config(allow_submit=False), task_id=None, all_tasks=True)
+
+    try:
+        service.run_once(config)
+        assert False, "Expected ValueError when task_id is missing"
+    except ValueError as exc:
+        assert "run_once requires a concrete task_id" in str(exc)

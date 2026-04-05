@@ -14,7 +14,7 @@
 
 ## Benchmark run entry point
 
-Use the placeholder benchmark runner to validate wiring and configuration:
+Use the benchmark runner to launch trials and validate wiring:
 
 - script: `scripts/run_bitgn_agent.py`
 - module entry point: `python -m benchmark.bitgn.cli`
@@ -23,21 +23,41 @@ Use the placeholder benchmark runner to validate wiring and configuration:
 Example:
 
 ```bash
-bitgn-run --task-id t01
+uv run --group bitgn-playground bitgn-run --task-id t01
+```
+
+Full benchmark task series:
+
+```bash
+uv run --group bitgn-playground bitgn-run --all-tasks
 ```
 
 Debug mode:
 
 ```bash
-bitgn-run --task-id t01 --debug
+uv run --group bitgn-playground bitgn-run --task-id t01 --debug
 ```
 
-Current behavior is intentionally placeholder-only:
+Current behavior is intentionally minimal:
 
 - initializes model-provider wiring (`local`/`openai`)
-- executes a mock platform + mock agent-loop flow
-- does not yet call the real BitGN API or solve tasks
+- starts real BitGN trials via `StartPlayground` by default
+- default agent mode is `dumb`: calls one random valid runtime tool, then submits `Done` with `OUTCOME_OK`
+- optional `--agent-mode placeholder` keeps the non-submitting placeholder behavior
 - in `--debug` mode, prints detailed run diagnostics (future hook for full LLM traces)
+- in `--debug` mode, prints the full available runtime tool list at run start
+- in `--debug` mode, prints each agent action and per-tool API call parameters + response payload
+- each task output block is wrapped with clear visual separators for scanability
+
+Trial launch mode:
+
+- default: `--trial-launch-mode playground`
+- future stub: `--trial-launch-mode run` (reserved for leaderboard-flow wiring)
+
+Benchmark/runtime separation:
+
+- `bitgn/pac1-dev` uses PCM runtime semantics
+- `bitgn/sandbox` uses MINI runtime semantics
 
 ## Experiment record minimum
 

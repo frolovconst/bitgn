@@ -22,6 +22,7 @@ class TrialSpec:
 @dataclass(frozen=True)
 class TrialHandle:
     trial_id: str
+    benchmark_id: str
     harness_url: str
     instruction: str
 
@@ -34,6 +35,13 @@ class AgentAnswer:
 
 
 @dataclass(frozen=True)
+class ToolCallTrace:
+    tool_name: str
+    params: str
+    result: str
+
+
+@dataclass(frozen=True)
 class TrialResult:
     trial_id: str
     score: float | None
@@ -41,6 +49,15 @@ class TrialResult:
 
 
 class BenchmarkPlatform(Protocol):
+    def list_task_ids(self, benchmark_id: str) -> list[str]:
+        ...
+
+    def list_available_tools(self, benchmark_id: str) -> list[str]:
+        ...
+
+    def call_random_tool(self, trial: TrialHandle) -> ToolCallTrace:
+        ...
+
     def start_trial(self, spec: TrialSpec) -> TrialHandle:
         ...
 

@@ -25,6 +25,8 @@ class BenchmarkRunService:
         self._agent_loop = agent_loop
 
     def run_once(self, config: BenchmarkRunConfig) -> RunSummary:
+        if config.task_id is None:
+            raise ValueError("run_once requires a concrete task_id")
         debug_lines = _build_debug_lines(config)
         trial = self._platform.start_trial(
             TrialSpec(benchmark_id=config.benchmark_id, task_id=config.task_id)
@@ -78,6 +80,9 @@ def _build_debug_lines(config: BenchmarkRunConfig) -> list[str]:
         f"model_base_url={config.model_base_url}",
         f"benchmark_host={config.benchmark_host}",
         f"benchmark_id={config.benchmark_id}",
-        f"task_id={config.task_id}",
+        f"task_id={config.task_id or '<all-tasks>'}",
+        f"all_tasks={config.all_tasks}",
+        f"agent_mode={config.agent_mode}",
+        f"trial_launch_mode={config.trial_launch_mode}",
         "llm_trace=not_implemented_yet",
     ]
