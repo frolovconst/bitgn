@@ -277,6 +277,7 @@ class LlmToolAgentLoop:
 
     def solve_trial(self, trial: TrialHandle) -> AgentAnswer:
         self._emit(f"solve_trial:start trial_id={trial.trial_id}")
+        self._emit(f"task_instruction:{_truncate_for_log(trial.instruction, max_chars=1000)}")
         tools = _build_tool_list(self._available_tools)
         messages: list[Message] = [Message(role="system", content=_SYSTEM_PROMPT)]
 

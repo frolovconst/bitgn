@@ -244,6 +244,42 @@ def test_llm_agent_reprompts_when_completion_missing_refs():
     assert len(model_client.calls) == 2
 
 
+def test_llm_agent_emits_task_instruction_in_actions():
+    model_client = _FakeModelClient(
+        responses=[
+            ModelResponse(
+                content="",
+                model="qwen3.5:4b",
+                provider="local",
+                finish_reason="tool_calls",
+                raw={
+                    "message": {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "report_completion",
+                                    "arguments": '{"message":"Done","outcome":"OUTCOME_OK","refs":[]}',
+                                }
+                            }
+                        ]
+                    }
+                },
+            ),
+        ]
+    )
+    actions = []
+    agent = LlmToolAgentLoop(
+        model_client=model_client,
+        available_tools=[],
+        max_steps=1,
+        action_sink=actions.append,
+    )
+
+    _ = agent.solve_trial(_trial())
+
+    assert any(action.startswith("task_instruction:Solve task") for action in actions)
+
+
 def test_call_runtime_tool_mini_supports_read_write_delete(monkeypatch):
     calls = []
 

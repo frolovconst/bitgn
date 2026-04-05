@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import replace
-from typing import Sequence
+from typing import Callable, Sequence
 
 from model_clients.base import ModelClient
 from model_clients.factory import create_model_client
@@ -144,12 +144,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     summaries = []
     for index, task_id in enumerate(task_ids, start=1):
+        _print_task_start(index=index, total=len(task_ids), task_id=task_id, benchmark_id=config.benchmark_id)
         agent_actions: list[str] = []
+        action_sink = _build_action_sink(agent_actions, debug=config.debug)
         agent_loop = _create_agent_loop(
             config=config,
             platform=platform,
             model_client=model_client,
-            agent_actions=agent_actions,
+            action_sink=action_sink,
         )
         service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
 
@@ -172,9 +174,8 @@ def _create_agent_loop(
     config: BenchmarkRunConfig,
     platform: BitgnBenchmarkPlatform,
     model_client: ModelClient,
-    agent_actions: list[str],
+    action_sink: Callable[[str], None] | None,
 ):
-    action_sink = agent_actions.append if config.debug else None
     if config.agent_mode == "llm":
         return LlmToolAgentLoop(
             model_client=model_client,
@@ -199,7 +200,7 @@ def _print_task_summary(
 ) -> None:
     divider = "=" * 72
     print(f"{CLI_CYAN}{divider}{CLI_RESET}")
-    print(f"{CLI_BLUE}Starting benchmark task run{CLI_RESET}")
+    print(f"{CLI_BLUE}Task result{CLI_RESET}")
     print(f"Task {index}/{total} | {summary.task_id}")
     print(f"{CLI_CYAN}{divider}{CLI_RESET}")
     print(f"trial_id: {summary.trial_id}")
@@ -264,6 +265,26 @@ def _render_score(score: float | None) -> str:
     if score <= 0.0:
         return f"{CLI_RED}{score}{CLI_RESET}"
     return f"{CLI_YELLOW}{score}{CLI_RESET}"
+
+
+def _print_task_start(index: int, total: int, task_id: str, benchmark_id: str) -> None:
+    divider = "=" * 72
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
+    print(f"{CLI_BLUE}Starting benchmark task run{CLI_RESET}")
+    print(f"Task {index}/{total} | {task_id}")
+    print(f"benchmark_id: {benchmark_id}")
+    print(f"{CLI_CYAN}{divider}{CLI_RESET}")
+
+
+def _build_action_sink(agent_actions: list[str], debug: bool) -> Callable[[str], None] | None:
+    if not debug:
+        return None
+
+    def _sink(action: str) -> None:
+        agent_actions.append(action)
+        print(f"{CLI_CYAN}[agent]{CLI_RESET} {action}")
+
+    return _sink
 
 
 def _print_run_footer(summaries) -> None:
