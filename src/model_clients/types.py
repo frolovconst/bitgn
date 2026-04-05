@@ -13,6 +13,18 @@ class Message:
 
 
 @dataclass(frozen=True)
+class ToolDefinition:
+    """Provider-agnostic function-tool definition."""
+
+    name: str
+    description: str = ""
+    parameters: dict[str, Any] = field(default_factory=dict)
+
+
+ToolSpec = str | ToolDefinition
+
+
+@dataclass(frozen=True)
 class ModelSettings:
     temperature: float = 0.0
     max_tokens: int | None = None

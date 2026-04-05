@@ -4,7 +4,7 @@ Goal: switch model providers without changing agent logic.
 
 ## Interface
 
-- `ModelClient.generate(messages, settings) -> ModelResponse`
+- `ModelClient.generate(messages, settings, tools=None) -> ModelResponse`
 
 Core agent code depends only on this interface.
 

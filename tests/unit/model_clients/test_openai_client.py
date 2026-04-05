@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from model_clients.openai_client import OpenAIModelClient
-from model_clients.types import Message, ModelSettings
+from model_clients.types import Message, ModelSettings, ToolDefinition
 
 
 class _FakeResponse:
@@ -57,3 +57,41 @@ def test_openai_missing_api_key_raises():
     client = OpenAIModelClient(model="gpt-4.1-mini", api_key_env="MISSING_KEY")
     with pytest.raises(ValueError, match="Missing API key"):
         client.generate([Message(role="user", content="hi")])
+
+
+def test_openai_generate_forwards_tools(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+    def fake_urlopen(req, timeout):
+        _ = timeout
+        payload = json.loads(req.data.decode("utf-8"))
+        assert "tools" in payload
+        assert payload["tools"][0]["function"]["name"] == "Context"
+        assert payload["tools"][1]["function"]["name"] == "Search"
+        assert payload["tools"][1]["function"]["parameters"]["type"] == "object"
+        return _FakeResponse(
+            {
+                "model": "gpt-4.1-mini",
+                "choices": [
+                    {
+                        "message": {"content": "ok"},
+                        "finish_reason": "stop",
+                    }
+                ],
+            }
+        )
+
+    client = OpenAIModelClient(model="gpt-4.1-mini")
+
+    with patch("model_clients.openai_client.request.urlopen", side_effect=fake_urlopen):
+        _ = client.generate(
+            [Message(role="user", content="hi")],
+            tools=[
+                "Context",
+                ToolDefinition(
+                    name="Search",
+                    description="Search repository files",
+                    parameters={"type": "object", "properties": {"pattern": {"type": "string"}}},
+                ),
+            ],
+        )

@@ -2,7 +2,7 @@ import json
 from unittest.mock import patch
 
 from model_clients.ollama_client import LocalOllamaClient
-from model_clients.types import Message
+from model_clients.types import Message, ToolDefinition
 
 
 class _FakeResponse:
@@ -42,3 +42,35 @@ def test_ollama_generate_success():
     assert response.provider == "local"
     assert response.content == "hello from ollama"
     assert response.finish_reason == "stop"
+
+
+def test_ollama_generate_forwards_tools():
+    def fake_urlopen(req, timeout):
+        _ = timeout
+        payload = json.loads(req.data.decode("utf-8"))
+        assert "tools" in payload
+        assert payload["tools"][0]["function"]["name"] == "List"
+        assert payload["tools"][1]["function"]["name"] == "Read"
+        assert payload["tools"][1]["function"]["parameters"]["type"] == "object"
+        return _FakeResponse(
+            {
+                "model": "qwen2.5-coder:3b",
+                "message": {"role": "assistant", "content": "done"},
+                "done_reason": "stop",
+            }
+        )
+
+    client = LocalOllamaClient(model="qwen2.5-coder:3b")
+
+    with patch("model_clients.ollama_client.request.urlopen", side_effect=fake_urlopen):
+        _ = client.generate(
+            [Message(role="user", content="hello")],
+            tools=[
+                "List",
+                ToolDefinition(
+                    name="Read",
+                    description="Read a file",
+                    parameters={"type": "object", "properties": {"path": {"type": "string"}}},
+                ),
+            ],
+        )

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from urllib import request
 
-from .types import Message, ModelResponse, ModelSettings
+from .types import Message, ModelResponse, ModelSettings, ToolSpec
 
 
 class LocalOllamaClient:
@@ -19,7 +20,12 @@ class LocalOllamaClient:
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
 
-    def generate(self, messages: list[Message], settings: ModelSettings | None = None) -> ModelResponse:
+    def generate(
+        self,
+        messages: list[Message],
+        settings: ModelSettings | None = None,
+        tools: list[ToolSpec] | None = None,
+    ) -> ModelResponse:
         settings = settings or ModelSettings(timeout_seconds=self._timeout_seconds)
         payload: dict[str, object] = {
             "model": self._model,
@@ -29,6 +35,8 @@ class LocalOllamaClient:
         }
         if settings.max_tokens is not None:
             payload["options"]["num_predict"] = settings.max_tokens
+        if tools:
+            payload["tools"] = [_to_function_tool(tool) for tool in tools]
 
         raw = _post_json(
             f"{self._base_url}/api/chat",
@@ -42,6 +50,19 @@ class LocalOllamaClient:
             finish_reason=raw.get("done_reason"),
             raw=raw,
         )
+
+
+def _to_function_tool(tool: ToolSpec) -> dict[str, object]:
+    if isinstance(tool, str):
+        return {
+            "type": "function",
+            "function": {
+                "name": tool,
+                "description": f"Runtime tool {tool}",
+                "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+        }
+    return {"type": "function", "function": asdict(tool)}
 
 
 def _post_json(url: str, payload: dict[str, object], timeout_seconds: float) -> dict:

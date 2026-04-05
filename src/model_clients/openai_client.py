@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import asdict
 from urllib import request
 
-from .types import Message, ModelResponse, ModelSettings
+from .types import Message, ModelResponse, ModelSettings, ToolSpec
 
 
 class OpenAIModelClient:
@@ -28,7 +29,12 @@ class OpenAIModelClient:
             raise ValueError(f"Missing API key in environment variable: {self._api_key_env}")
         return api_key
 
-    def generate(self, messages: list[Message], settings: ModelSettings | None = None) -> ModelResponse:
+    def generate(
+        self,
+        messages: list[Message],
+        settings: ModelSettings | None = None,
+        tools: list[ToolSpec] | None = None,
+    ) -> ModelResponse:
         settings = settings or ModelSettings(timeout_seconds=self._timeout_seconds)
         payload: dict[str, object] = {
             "model": self._model,
@@ -37,6 +43,8 @@ class OpenAIModelClient:
         }
         if settings.max_tokens is not None:
             payload["max_tokens"] = settings.max_tokens
+        if tools:
+            payload["tools"] = [_to_function_tool(tool) for tool in tools]
 
         raw = _post_json(
             f"{self._base_url}/v1/chat/completions",
@@ -52,6 +60,19 @@ class OpenAIModelClient:
             finish_reason=first_choice.get("finish_reason"),
             raw=raw,
         )
+
+
+def _to_function_tool(tool: ToolSpec) -> dict[str, object]:
+    if isinstance(tool, str):
+        return {
+            "type": "function",
+            "function": {
+                "name": tool,
+                "description": f"Runtime tool {tool}",
+                "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
+            },
+        }
+    return {"type": "function", "function": asdict(tool)}
 
 
 def _post_json(url: str, payload: dict[str, object], timeout_seconds: float, headers: dict[str, str] | None = None) -> dict:
