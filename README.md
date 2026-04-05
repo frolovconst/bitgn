@@ -15,6 +15,7 @@ That core implementation is still in progress.
 
 - `src/`: agent logic and supporting code for the benchmark-facing loop.
 - `src/model_clients/`: provider adapters behind one model-client interface.
+- `notebooks/`: exploratory notebooks for API probing and agent-development experiments.
 - `workspaces/agent-runtime/`: Python dev and test shell.
 - `workspaces/local-llms/`: local model runtime and Ollama workflows used to debug agent code without paid API usage.
 - `docs/`: source-of-truth project docs.
