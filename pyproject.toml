@@ -9,6 +9,9 @@ description = "BitGN benchmark agent foundations"
 requires-python = ">=3.10"
 dependencies = []
 
+[project.scripts]
+bitgn-run = "benchmark.bitgn.cli:main"
+
 [dependency-groups]
 dev = [
   "pytest>=8.2,<10",

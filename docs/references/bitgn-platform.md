@@ -3,7 +3,9 @@
 ## Source
 
 - URL: <https://bitgn.com/>
-- Last checked: 2026-03-24
+- Local vendored proto: [`../../proto/bitgn/`](../../proto/bitgn/)
+- Upstream source copied from: `/Users/kofrolov/prj/expts/bitgn/sample-agents/proto/bitgn/`
+- Last checked: 2026-04-05
 
 ## Working assumptions
 
