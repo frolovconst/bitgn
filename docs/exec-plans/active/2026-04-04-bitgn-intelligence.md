@@ -25,9 +25,10 @@ Out of scope:
 
 ## Status
 
-In progress
+Done
 
 ## Notes
 
 - Record experiments minimally as commit SHA plus score.
 - Capture only durable benchmark assumptions in docs.
+- Durable API-surface findings captured in [`../../references/bitgn-platform.md`](../../references/bitgn-platform.md) on 2026-04-06.

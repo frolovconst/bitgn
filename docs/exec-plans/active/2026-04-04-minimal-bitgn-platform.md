@@ -25,7 +25,7 @@ Out of scope:
 
 ## Status
 
-Not started
+In progress
 
 ## Notes
 
