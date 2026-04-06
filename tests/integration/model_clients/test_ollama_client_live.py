@@ -9,7 +9,7 @@ from model_clients.types import Message, ModelSettings
 @pytest.mark.local_model
 def test_ollama_generate_live_response():
     client = LocalOllamaClient(
-        model=os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:3b"),
+        model=os.environ.get("OLLAMA_MODEL", "qwen3.5:4b"),
         base_url=os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434"),
         timeout_seconds=float(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "30")),
     )
