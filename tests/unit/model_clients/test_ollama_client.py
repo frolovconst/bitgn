@@ -1,6 +1,8 @@
 import json
 from unittest.mock import patch
 
+import pytest
+
 from model_clients.ollama_client import LocalOllamaClient
 from model_clients.types import Message
 
@@ -19,22 +21,23 @@ class _FakeResponse:
         return None
 
 
-def test_ollama_generate_success():
+@pytest.mark.parametrize("model_name", ["qwen3.5:4b", "qwen3.5:9b"])
+def test_ollama_generate_success(model_name: str):
     def fake_urlopen(req, timeout):
         assert req.full_url.endswith("/api/chat")
         payload = json.loads(req.data.decode("utf-8"))
-        assert payload["model"] == "qwen2.5-coder:3b"
+        assert payload["model"] == model_name
         assert payload["stream"] is False
         assert timeout == 60.0
         return _FakeResponse(
             {
-                "model": "qwen2.5-coder:3b",
+                "model": model_name,
                 "message": {"role": "assistant", "content": "hello from ollama"},
                 "done_reason": "stop",
             }
         )
 
-    client = LocalOllamaClient(model="qwen2.5-coder:3b")
+    client = LocalOllamaClient(model=model_name)
 
     with patch("model_clients.ollama_client.request.urlopen", side_effect=fake_urlopen):
         response = client.generate([Message(role="user", content="hello")])

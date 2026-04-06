@@ -1,12 +1,15 @@
+import pytest
+
 from model_clients import LocalOllamaClient, OpenAIModelClient, create_model_client
 from model_clients.types import ModelClientConfig
 
 
-def test_factory_returns_local_client():
+@pytest.mark.parametrize("model_name", ["qwen3.5:4b", "qwen3.5:9b"])
+def test_factory_returns_local_client(model_name: str):
     client = create_model_client(
         ModelClientConfig(
             provider="local",
-            model="qwen2.5-coder:3b",
+            model=model_name,
             base_url="http://127.0.0.1:11434",
         )
     )

@@ -9,12 +9,18 @@ nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-ll
 
 2. Pull a model:
 ```bash
-nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#<model-app>-pull
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-pull
 ```
 
 3. Run a model:
 ```bash
-nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#<model-app>-chat
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-chat
+```
+
+Alternative model (9B):
+```bash
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-9b-pull
+nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-9b-chat
 ```
 
 Naming template:
