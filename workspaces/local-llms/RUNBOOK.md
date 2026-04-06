@@ -1,18 +1,18 @@
 # Local LLM Runbook
 
-Use reproducible flake apps from repo root.
+From repo root:
 
-1. Serve:
+1. Start server:
 ```bash
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#ollama-serve
 ```
 
-2. Pull model:
+2. Pull a model:
 ```bash
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-pull
 ```
 
-3. Chat:
+3. Run a model:
 ```bash
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-4b-chat
 ```
@@ -23,7 +23,11 @@ nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-ll
 nix --extra-experimental-features 'nix-command flakes' run ./workspaces/local-llms#qwen35-9b-chat
 ```
 
-Optional integration test:
+Naming template:
+
+- `<model-app>` uses the script/app stem in `workspaces/local-llms/bin/` and `workspaces/local-llms/flake.nix`.
+
+Optional test:
 ```bash
 uv run pytest --run-local-model
 ```

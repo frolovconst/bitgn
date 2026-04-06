@@ -143,6 +143,82 @@
               in
               "${app}/bin/qwen35-9b-chat";
           };
+
+          qwen35-4b-pull = {
+            type = "app";
+            program =
+              let
+                app = pkgs.writeShellApplication {
+                  name = "qwen35-4b-pull";
+                  runtimeInputs = [ pkgs.ollama ];
+                  text = ''
+                    ${localLlmHome}
+                    export OLLAMA_HOST="127.0.0.1:11434"
+                    export OLLAMA_MODELS="$LOCAL_LLM_HOME/.ollama/models"
+                    mkdir -p "$OLLAMA_MODELS"
+                    exec bash ${./bin/qwen35-4b-pull.sh}
+                  '';
+                };
+              in
+              "${app}/bin/qwen35-4b-pull";
+          };
+
+          qwen35-4b-chat = {
+            type = "app";
+            program =
+              let
+                app = pkgs.writeShellApplication {
+                  name = "qwen35-4b-chat";
+                  runtimeInputs = [ pkgs.ollama ];
+                  text = ''
+                    ${localLlmHome}
+                    export OLLAMA_HOST="127.0.0.1:11434"
+                    export OLLAMA_MODELS="$LOCAL_LLM_HOME/.ollama/models"
+                    mkdir -p "$OLLAMA_MODELS"
+                    exec bash ${./bin/qwen35-4b-chat.sh}
+                  '';
+                };
+              in
+              "${app}/bin/qwen35-4b-chat";
+          };
+
+          qwen35-9b-pull = {
+            type = "app";
+            program =
+              let
+                app = pkgs.writeShellApplication {
+                  name = "qwen35-9b-pull";
+                  runtimeInputs = [ pkgs.ollama ];
+                  text = ''
+                    ${localLlmHome}
+                    export OLLAMA_HOST="127.0.0.1:11434"
+                    export OLLAMA_MODELS="$LOCAL_LLM_HOME/.ollama/models"
+                    mkdir -p "$OLLAMA_MODELS"
+                    exec bash ${./bin/qwen35-9b-pull.sh}
+                  '';
+                };
+              in
+              "${app}/bin/qwen35-9b-pull";
+          };
+
+          qwen35-9b-chat = {
+            type = "app";
+            program =
+              let
+                app = pkgs.writeShellApplication {
+                  name = "qwen35-9b-chat";
+                  runtimeInputs = [ pkgs.ollama ];
+                  text = ''
+                    ${localLlmHome}
+                    export OLLAMA_HOST="127.0.0.1:11434"
+                    export OLLAMA_MODELS="$LOCAL_LLM_HOME/.ollama/models"
+                    mkdir -p "$OLLAMA_MODELS"
+                    exec bash ${./bin/qwen35-9b-chat.sh}
+                  '';
+                };
+              in
+              "${app}/bin/qwen35-9b-chat";
+          };
         };
       });
 }
