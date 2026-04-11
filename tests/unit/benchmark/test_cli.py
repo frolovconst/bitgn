@@ -1,6 +1,6 @@
 import pytest
 
-from benchmark.bitgn.cli import parse_config
+from benchmark.bitgn.cli import _compute_average_score, _format_score, parse_config
 
 
 def test_parse_config_defaults_to_local_qwen():
@@ -59,3 +59,25 @@ def test_parse_config_requires_task_selection():
 def test_parse_config_rejects_task_id_and_all_tasks_together():
     with pytest.raises(SystemExit, match="Use either --task-id or --all-tasks, not both"):
         parse_config(["--task-id", "t01", "--all-tasks"])
+
+
+def test_format_score_colors_by_bucket():
+    assert "\033[31m" in _format_score(0.0)
+    assert "\033[33m" in _format_score(0.5)
+    assert "\033[32m" in _format_score(1.0)
+    assert _format_score(None) == "None"
+
+
+def test_compute_average_score_ignores_missing_scores():
+    average = _compute_average_score(
+        [
+            ("t01", 1.0, 1.2),
+            ("t02", None, 0.5),
+            ("t03", 0.0, 2.1),
+        ]
+    )
+    assert average == 0.5
+
+
+def test_compute_average_score_none_when_all_missing():
+    assert _compute_average_score([("t01", None, 0.1), ("t02", None, 0.2)]) is None
