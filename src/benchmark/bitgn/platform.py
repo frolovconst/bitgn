@@ -1,22 +1,25 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from enum import Enum
 import random
-from typing import Any, Callable
+from typing import Any
+
+from model_clients.types import ToolDefinition
 
 from .contracts import AgentAnswer, BenchmarkPlatform, ToolCallTrace, TrialHandle, TrialOutcome, TrialResult, TrialSpec
+from .runtime_tools import (
+    BENCHMARK_RUNTIME_SURFACE_BY_ID,
+    RuntimeSurface,
+    build_model_tool_definitions,
+    call_runtime_tool,
+    list_runtime_tool_names,
+)
 
 
 class TrialLaunchMode(str, Enum):
     PLAYGROUND = "playground"
     RUN = "run"
-
-
-class RuntimeSurface(str, Enum):
-    PCM = "pcm"
-    MINI = "mini"
 
 
 @dataclass
@@ -25,36 +28,6 @@ class _RunContext:
     benchmark_id: str
     pending_trial_ids: list[str]
     submitted: bool = False
-
-
-BENCHMARK_RUNTIME_SURFACE_BY_ID: dict[str, RuntimeSurface] = {
-    "bitgn/pac1-dev": RuntimeSurface.PCM,
-    "bitgn/sandbox": RuntimeSurface.MINI,
-}
-
-PCM_TOOLS: list[str] = [
-    "Read",
-    "Write",
-    "Delete",
-    "MkDir",
-    "Move",
-    "List",
-    "Tree",
-    "Find",
-    "Search",
-    "Context",
-    "Answer",
-]
-
-MINI_TOOLS: list[str] = [
-    "Outline",
-    "Search",
-    "List",
-    "Read",
-    "Write",
-    "Delete",
-    "Answer",
-]
 
 
 class BitgnBenchmarkPlatform(BenchmarkPlatform):
@@ -84,10 +57,10 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
         return [task.task_id for task in response.tasks]
 
     def list_available_tools(self, benchmark_id: str) -> list[str]:
-        runtime_surface = _resolve_runtime_surface(benchmark_id)
-        if runtime_surface == RuntimeSurface.MINI:
-            return list(MINI_TOOLS)
-        return list(PCM_TOOLS)
+        return list_runtime_tool_names(benchmark_id)
+
+    def list_runtime_tool_definitions(self, benchmark_id: str) -> list[ToolDefinition]:
+        return build_model_tool_definitions(benchmark_id)
 
     def start_trial(self, spec: TrialSpec) -> TrialHandle:
         if self._launch_mode == TrialLaunchMode.PLAYGROUND:
@@ -123,8 +96,31 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
     def call_random_tool(self, trial: TrialHandle) -> ToolCallTrace:
         runtime_surface = _resolve_runtime_surface(trial.benchmark_id)
         if runtime_surface == RuntimeSurface.MINI:
-            return _call_random_tool_mini(trial.harness_url)
-        return _call_random_tool_pcm(trial.harness_url)
+            tool_name = random.choice(["Outline", "List", "Search", "Read"])
+            sample_args: dict[str, Any] = {
+                "Outline": {"path": "/"},
+                "List": {"path": "/"},
+                "Search": {"path": "/", "pattern": ".", "count": 1},
+                "Read": {"path": "/README.md"},
+            }[tool_name]
+            params, result = call_runtime_tool(trial, tool_name, sample_args)
+            return ToolCallTrace(tool_name=tool_name, params=params, result=result)
+
+        tool_name = random.choice(["Context", "List", "Tree", "Search", "Read", "Find"])
+        sample_args = {
+            "Context": {},
+            "List": {"name": "/"},
+            "Tree": {"root": "/", "level": 1},
+            "Search": {"root": "/", "pattern": ".", "limit": 1},
+            "Read": {"path": "/README.md"},
+            "Find": {"root": "/", "name": "README", "type": "TYPE_FILES", "limit": 1},
+        }[tool_name]
+        params, result = call_runtime_tool(trial, tool_name, sample_args)
+        return ToolCallTrace(tool_name=tool_name, params=params, result=result)
+
+    def call_tool(self, trial: TrialHandle, tool_name: str, arguments: str | dict[str, Any] | None) -> ToolCallTrace:
+        params, result = call_runtime_tool(trial, tool_name, arguments)
+        return ToolCallTrace(tool_name=tool_name, params=params, result=result)
 
     def end_trial(self, trial_id: str) -> TrialResult:
         response = self._harness.end_trial(_new_end_trial_request(trial_id=trial_id))
@@ -211,8 +207,7 @@ class PlaceholderBenchmarkPlatform(BenchmarkPlatform):
         return ["t01"]
 
     def list_available_tools(self, benchmark_id: str) -> list[str]:
-        _ = benchmark_id
-        return list(PCM_TOOLS)
+        return list_runtime_tool_names(benchmark_id)
 
     def call_random_tool(self, trial: TrialHandle) -> ToolCallTrace:
         _ = trial
@@ -420,72 +415,3 @@ def _submit_answer_mini(harness_url: str, answer: AgentAnswer) -> None:
         )
     )
 
-
-def _call_random_tool_pcm(harness_url: str) -> ToolCallTrace:
-    runtime = _create_pcm_runtime_client(harness_url)
-    tool_name = random.choice(["Context", "List", "Tree", "Search"])
-    if tool_name == "Context":
-        return _call_tool(
-            tool_name="Context",
-            request_factory=_new_pcm_context_request,
-            invoke=runtime.context,
-        )
-    if tool_name == "List":
-        return _call_tool(
-            tool_name="List",
-            request_factory=lambda: _new_pcm_list_request(name="/"),
-            invoke=runtime.list,
-        )
-    if tool_name == "Tree":
-        return _call_tool(
-            tool_name="Tree",
-            request_factory=lambda: _new_pcm_tree_request(root="/", level=1),
-            invoke=runtime.tree,
-        )
-    return _call_tool(
-        tool_name="Search",
-        request_factory=lambda: _new_pcm_search_request(root="/", pattern=".", limit=1),
-        invoke=runtime.search,
-    )
-
-
-def _call_random_tool_mini(harness_url: str) -> ToolCallTrace:
-    runtime = _create_mini_runtime_client(harness_url)
-    tool_name = random.choice(["Outline", "List", "Search"])
-    if tool_name == "Outline":
-        return _call_tool(
-            tool_name="Outline",
-            request_factory=lambda: _new_mini_outline_request(path="/"),
-            invoke=runtime.outline,
-        )
-    if tool_name == "List":
-        return _call_tool(
-            tool_name="List",
-            request_factory=lambda: _new_mini_list_request(path="/"),
-            invoke=runtime.list,
-        )
-    return _call_tool(
-        tool_name="Search",
-        request_factory=lambda: _new_mini_search_request(path="/", pattern=".", count=1),
-        invoke=runtime.search,
-    )
-
-
-def _call_tool(tool_name: str, request_factory: Callable[[], Any], invoke: Callable[[Any], Any]) -> ToolCallTrace:
-    request = request_factory()
-    response = invoke(request)
-    return ToolCallTrace(
-        tool_name=tool_name,
-        params=_format_response_payload(request),
-        result=_format_response_payload(response),
-    )
-
-
-def _format_response_payload(response: Any) -> str:
-    try:
-        from google.protobuf.json_format import MessageToDict
-
-        payload = MessageToDict(response)
-        return json.dumps(payload, ensure_ascii=True, sort_keys=True)
-    except Exception:
-        return str(response)

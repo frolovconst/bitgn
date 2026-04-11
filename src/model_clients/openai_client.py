@@ -4,7 +4,7 @@ import json
 import os
 from urllib import request
 
-from .types import Message, ModelResponse, ModelSettings
+from .types import Message, ModelResponse, ModelSettings, ToolCall, ToolDefinition
 
 
 class OpenAIModelClient:
@@ -28,15 +28,41 @@ class OpenAIModelClient:
             raise ValueError(f"Missing API key in environment variable: {self._api_key_env}")
         return api_key
 
-    def generate(self, messages: list[Message], settings: ModelSettings | None = None) -> ModelResponse:
+    def generate(
+        self,
+        messages: list[Message],
+        settings: ModelSettings | None = None,
+        tools: list[ToolDefinition] | None = None,
+    ) -> ModelResponse:
         settings = settings or ModelSettings(timeout_seconds=self._timeout_seconds)
+        payload_messages = []
+        for m in messages:
+            item: dict[str, object] = {"role": m.role, "content": m.content}
+            if m.name is not None:
+                item["name"] = m.name
+            if m.tool_call_id is not None:
+                item["tool_call_id"] = m.tool_call_id
+            payload_messages.append(item)
+
         payload: dict[str, object] = {
             "model": self._model,
-            "messages": [{"role": m.role, "content": m.content} for m in messages],
+            "messages": payload_messages,
             "temperature": settings.temperature,
         }
         if settings.max_tokens is not None:
             payload["max_tokens"] = settings.max_tokens
+        if tools:
+            payload["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    },
+                }
+                for tool in tools
+            ]
 
         raw = _post_json(
             f"{self._base_url}/v1/chat/completions",
@@ -45,11 +71,23 @@ class OpenAIModelClient:
             headers={"Authorization": f"Bearer {self._resolve_api_key()}"},
         )
         first_choice = raw["choices"][0]
+        message = first_choice.get("message", {})
+        tool_calls = []
+        for call in message.get("tool_calls", []):
+            function_payload = call.get("function", {})
+            tool_calls.append(
+                ToolCall(
+                    id=call.get("id"),
+                    name=function_payload.get("name", ""),
+                    arguments=function_payload.get("arguments", "{}"),
+                )
+            )
         return ModelResponse(
-            content=first_choice["message"]["content"],
+            content=message.get("content") or "",
             model=raw.get("model", self._model),
             provider="openai",
             finish_reason=first_choice.get("finish_reason"),
+            tool_calls=tool_calls,
             raw=raw,
         )
 

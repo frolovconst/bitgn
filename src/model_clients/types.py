@@ -10,6 +10,22 @@ Role = Literal["system", "user", "assistant", "tool"]
 class Message:
     role: Role
     content: str
+    name: str | None = None
+    tool_call_id: str | None = None
+
+
+@dataclass(frozen=True)
+class ToolDefinition:
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    id: str | None
+    name: str
+    arguments: str
 
 
 @dataclass(frozen=True)
@@ -25,6 +41,7 @@ class ModelResponse:
     model: str
     provider: str
     finish_reason: str | None = None
+    tool_calls: list[ToolCall] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)
 
 

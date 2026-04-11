@@ -42,4 +42,43 @@ Notes:
 - In current code, `trial-launch-mode run` uses `StartRun -> StartTrial -> EndTrial -> SubmitRun(force=true)`.
 - Runtime selection is handled at answer-submission time by benchmark id.
 
+## Implemented runtime API calls (as of 2026-04-11)
+
+Implementation source:
+
+- Runtime wrappers, descriptions, and validators: `src/benchmark/bitgn/runtime_tools.py`
+- Platform exposure/helpers: `src/benchmark/bitgn/platform.py`
+
+`bitgn/pac1-dev` (PCM) implemented calls:
+
+- `Read`
+- `Write`
+- `Delete`
+- `MkDir`
+- `Move`
+- `List`
+- `Tree`
+- `Find`
+- `Search`
+- `Context`
+- `Answer`
+
+`bitgn/sandbox` (MINI) implemented calls:
+
+- `Outline`
+- `Search`
+- `List`
+- `Read`
+- `Write`
+- `Delete`
+- `Answer`
+
+Validation behavior:
+
+- Every runtime tool has an input validator.
+- Validation failures return a structured tool result with:
+  - `error=validation_error`
+  - a concrete failure message
+  - actionable `guidance` for revise-and-retry flow by the LLM caller
+
 Use round-specific docs for rule or API details.
