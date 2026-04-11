@@ -1,7 +1,13 @@
 import pytest
 from benchmark.bitgn.runner import RunSummary
 
-from benchmark.bitgn.cli import _compute_average_score, _format_score, _print_task_summary, parse_config
+from benchmark.bitgn.cli import (
+    _append_local_run_record,
+    _compute_average_score,
+    _format_score,
+    _print_task_summary,
+    parse_config,
+)
 
 
 def test_parse_config_defaults_to_local_qwen():
@@ -17,6 +23,8 @@ def test_parse_config_defaults_to_local_qwen():
     assert config.model_base_url == "http://127.0.0.1:11434"
     assert config.model_api_key_env is None
     assert config.bitgn_api_key_env == "BITGN_API_KEY"
+    assert config.run_name.startswith("columbarium-")
+    assert len(config.run_name) > len("columbarium-")
 
 
 def test_parse_config_openai_defaults_and_key_env():
@@ -26,6 +34,18 @@ def test_parse_config_openai_defaults_and_key_env():
     assert config.model_name == "gpt-4.1-mini"
     assert config.model_base_url == "https://api.openai.com"
     assert config.model_api_key_env == "OPENAI_API_KEY"
+
+
+def test_parse_config_run_name_from_env(monkeypatch):
+    monkeypatch.setenv("BITGN_RUN_NAME", "columbarium-envname")
+    config = parse_config(["--task-id", "t01"])
+    assert config.run_name == "columbarium-envname"
+
+
+def test_parse_config_run_name_flag_overrides_env(monkeypatch):
+    monkeypatch.setenv("BITGN_RUN_NAME", "columbarium-envname")
+    config = parse_config(["--task-id", "t01", "--run-name", "columbarium-cli"])
+    assert config.run_name == "columbarium-cli"
 
 
 def test_parse_config_debug_flag():
@@ -123,3 +143,25 @@ def test_task_summary_has_three_sections(capsys):
     assert out.count("TASK DETAILS") == 1
     assert out.count("SOLUTION LOG") == 1
     assert out.count("RESULT") == 1
+
+
+def test_append_local_run_record_writes_required_fields(tmp_path, monkeypatch):
+    log_path = tmp_path / "runs.log"
+    monkeypatch.setattr("benchmark.bitgn.cli.LOCAL_RUN_LOG_PATH", log_path)
+    monkeypatch.setattr("benchmark.bitgn.cli._resolve_commit_sha", lambda: "abc123def456")
+
+    _append_local_run_record(
+        run_name="columbarium-calm-curie",
+        average_score=0.75,
+        elapsed_seconds=12.3,
+        agent_mode="dumb",
+    )
+
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    line = lines[0]
+    assert "run_name=columbarium-calm-curie" in line
+    assert "average_score=0.750000" in line
+    assert "commit_sha=abc123def456" in line
+    assert "time_seconds=12.300" in line
+    assert "agent_mode=dumb" in line
