@@ -58,6 +58,12 @@ Trial launch mode:
   - flow: `StartRun -> StartTrial -> EndTrial -> SubmitRun(force=true)`
   - requires scored-run key via env var (default): `BITGN_API_KEY`
   - optional run label: `BITGN_RUN_NAME` or `--run-name`
+  - if run label is omitted, runner auto-generates `columbarium-<docker-style-clause>`
+
+Local run records:
+
+- each invocation appends one line to `.local/bitgn-runs.log`
+- line fields: `run_name`, `average_score`, `commit_sha`, `time_seconds`, `agent_mode`
 
 Leaderboard reference implementation:
 

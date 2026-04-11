@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 from math import isclose
+from pathlib import Path
+import random
+import subprocess
 from time import perf_counter
 from typing import Sequence
 
@@ -29,6 +32,8 @@ ANSI_RESET = "\033[0m"
 ANSI_RED = "\033[31m"
 ANSI_YELLOW = "\033[33m"
 ANSI_GREEN = "\033[32m"
+LOCAL_RUN_LOG_PATH = Path(".local/bitgn-runs.log")
+RUN_NAME_PREFIX = "columbarium"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -64,8 +69,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--run-name",
-        default=env_default_run_name(),
-        help="Leaderboard run name used with --trial-launch-mode run.",
+        default=None,
+        help="Leaderboard run name used with --trial-launch-mode run. Auto-generated when omitted.",
     )
     parser.add_argument(
         "--debug",
@@ -111,6 +116,7 @@ def parse_config(argv: Sequence[str] | None = None) -> BenchmarkRunConfig:
         raise SystemExit("Use either --task-id or --all-tasks, not both.")
     if args.trial_launch_mode == TrialLaunchMode.RUN.value and not args.allow_submit:
         raise SystemExit("Run mode requires --allow-submit so trials can be ended and submitted.")
+    run_name = _resolve_run_name(args.run_name)
     provider = args.model_provider
     return BenchmarkRunConfig(
         benchmark_host=args.benchmark_host,
@@ -127,67 +133,76 @@ def parse_config(argv: Sequence[str] | None = None) -> BenchmarkRunConfig:
         model_api_key_env=(args.model_api_key_env if provider == "openai" else None),
         model_timeout_seconds=args.model_timeout_seconds,
         bitgn_api_key_env=args.bitgn_api_key_env,
-        run_name=args.run_name,
+        run_name=run_name,
     )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     config = parse_config(argv)
     bitgn_api_key = _resolve_bitgn_api_key(config)
-
-    # Construct and validate model client now so provider/model wiring stays
-    # exercised even before agent loop logic is implemented.
-    _ = create_model_client(
-        ModelClientConfig(
-            provider=config.model_provider,
-            model=config.model_name,
-            base_url=config.model_base_url,
-            api_key_env=config.model_api_key_env,
-            timeout_seconds=config.model_timeout_seconds,
-        )
-    )
-
-    platform = BitgnBenchmarkPlatform(
-        benchmark_host=config.benchmark_host,
-        launch_mode=config.trial_launch_mode,
-        run_name=config.run_name,
-        run_api_key=bitgn_api_key,
-    )
-    task_ids = [config.task_id] if config.task_id else platform.list_task_ids(config.benchmark_id)
-
-    if not task_ids:
-        print("No tasks returned by benchmark.")
-        return 0
-
-    _print_run_header(config, total_tasks=len(task_ids))
-
-    if config.debug:
-        _print_available_tools(config.benchmark_id, platform.list_available_tools(config.benchmark_id))
-
+    run_started_at = perf_counter()
     task_results: list[tuple[str, float | None, float]] = []
+
     try:
-        for index, task_id in enumerate(task_ids, start=1):
-            agent_actions: list[str] = []
-            agent_loop = _create_agent_loop(config=config, platform=platform, agent_actions=agent_actions)
-            service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
-
-            task_config = replace(config, task_id=task_id, all_tasks=False)
-            started_at = perf_counter()
-            summary = service.run_once(task_config)
-            elapsed_seconds = perf_counter() - started_at
-            task_results.append((summary.task_id, summary.score, elapsed_seconds))
-            _print_task_summary(
-                summary,
-                debug=config.debug,
-                index=index,
-                total=len(task_ids),
-                agent_actions=agent_actions,
+        # Construct and validate model client now so provider/model wiring stays
+        # exercised even before agent loop logic is implemented.
+        _ = create_model_client(
+            ModelClientConfig(
+                provider=config.model_provider,
+                model=config.model_name,
+                base_url=config.model_base_url,
+                api_key_env=config.model_api_key_env,
+                timeout_seconds=config.model_timeout_seconds,
             )
-    finally:
-        platform.finalize_run(force=(config.trial_launch_mode == TrialLaunchMode.RUN.value))
+        )
 
-    _print_run_summary(task_results)
-    return 0
+        platform = BitgnBenchmarkPlatform(
+            benchmark_host=config.benchmark_host,
+            launch_mode=config.trial_launch_mode,
+            run_name=config.run_name,
+            run_api_key=bitgn_api_key,
+        )
+        task_ids = [config.task_id] if config.task_id else platform.list_task_ids(config.benchmark_id)
+
+        if not task_ids:
+            print("No tasks returned by benchmark.")
+            return 0
+
+        _print_run_header(config, total_tasks=len(task_ids))
+
+        if config.debug:
+            _print_available_tools(config.benchmark_id, platform.list_available_tools(config.benchmark_id))
+
+        try:
+            for index, task_id in enumerate(task_ids, start=1):
+                agent_actions: list[str] = []
+                agent_loop = _create_agent_loop(config=config, platform=platform, agent_actions=agent_actions)
+                service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
+
+                task_config = replace(config, task_id=task_id, all_tasks=False)
+                started_at = perf_counter()
+                summary = service.run_once(task_config)
+                elapsed_seconds = perf_counter() - started_at
+                task_results.append((summary.task_id, summary.score, elapsed_seconds))
+                _print_task_summary(
+                    summary,
+                    debug=config.debug,
+                    index=index,
+                    total=len(task_ids),
+                    agent_actions=agent_actions,
+                )
+        finally:
+            platform.finalize_run(force=(config.trial_launch_mode == TrialLaunchMode.RUN.value))
+
+        _print_run_summary(task_results)
+        return 0
+    finally:
+        _append_local_run_record(
+            run_name=config.run_name or f"{RUN_NAME_PREFIX}-unknown",
+            average_score=_compute_average_score(task_results),
+            elapsed_seconds=perf_counter() - run_started_at,
+            agent_mode=config.agent_mode,
+        )
 
 
 def _create_agent_loop(
@@ -327,6 +342,84 @@ def _print_run_summary(task_results: list[tuple[str, float | None, float]]) -> N
     print("-" * 72)
     for task_id, score, elapsed_seconds in task_results:
         print(f"{task_id} | {_format_score(score)} | {elapsed_seconds:.3f}")
+
+
+def _resolve_run_name(cli_run_name: str | None) -> str:
+    if cli_run_name is not None:
+        run_name = cli_run_name.strip()
+        if run_name:
+            return run_name
+
+    env_run_name = env_default_run_name()
+    if env_run_name:
+        return env_run_name
+    return _generate_default_run_name()
+
+
+def _generate_default_run_name() -> str:
+    # Docker-style pattern: short adjective + surname-like token.
+    adjectives = (
+        "agile",
+        "calm",
+        "dandy",
+        "eager",
+        "keen",
+        "lucky",
+        "merry",
+        "noble",
+        "proud",
+        "swift",
+    )
+    names = (
+        "bohr",
+        "curie",
+        "fermi",
+        "lovel",
+        "raman",
+        "turing",
+        "wu",
+    )
+    rng = random.SystemRandom()
+    clause = f"{rng.choice(adjectives)}-{rng.choice(names)}"
+    return f"{RUN_NAME_PREFIX}-{clause}"
+
+
+def _append_local_run_record(
+    run_name: str,
+    average_score: float | None,
+    elapsed_seconds: float,
+    agent_mode: str,
+) -> None:
+    LOCAL_RUN_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    average_score_text = "None" if average_score is None else f"{average_score:.6f}"
+    commit_sha = _resolve_commit_sha()
+    with LOCAL_RUN_LOG_PATH.open("a", encoding="utf-8") as run_log:
+        run_log.write(
+            "\t".join(
+                [
+                    f"run_name={run_name}",
+                    f"average_score={average_score_text}",
+                    f"commit_sha={commit_sha}",
+                    f"time_seconds={elapsed_seconds:.3f}",
+                    f"agent_mode={agent_mode}",
+                ]
+            )
+        )
+        run_log.write("\n")
+
+
+def _resolve_commit_sha() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short=12", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        sha = result.stdout.strip()
+        return sha or "unknown"
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
 
 
 if __name__ == "__main__":

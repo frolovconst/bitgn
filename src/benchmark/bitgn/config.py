@@ -35,7 +35,6 @@ DEFAULT_LOCAL_MODEL_BASE_URL = "http://127.0.0.1:11434"
 DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
 DEFAULT_OPENAI_MODEL_BASE_URL = "https://api.openai.com"
 DEFAULT_BITGN_API_KEY_ENV = "BITGN_API_KEY"
-DEFAULT_RUN_NAME = "columbarium-trial-launch"
 
 
 def env_default_benchmark_host() -> str:
@@ -58,5 +57,9 @@ def default_model_base_url(provider: str) -> str:
     return DEFAULT_LOCAL_MODEL_BASE_URL
 
 
-def env_default_run_name() -> str:
-    return os.getenv("BITGN_RUN_NAME", DEFAULT_RUN_NAME)
+def env_default_run_name() -> str | None:
+    value = os.getenv("BITGN_RUN_NAME")
+    if value is None:
+        return None
+    run_name = value.strip()
+    return run_name or None
