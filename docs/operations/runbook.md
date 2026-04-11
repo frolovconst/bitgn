@@ -23,19 +23,19 @@ Use the benchmark runner to launch trials and validate wiring:
 Example:
 
 ```bash
-uv run --group bitgn-playground bitgn-run --task-id t01
+uv run bitgn-run --task-id t01
 ```
 
 Full benchmark task series:
 
 ```bash
-uv run --group bitgn-playground bitgn-run --all-tasks
+uv run bitgn-run --all-tasks
 ```
 
 Debug mode:
 
 ```bash
-uv run --group bitgn-playground bitgn-run --task-id t01 --debug
+uv run bitgn-run --task-id t01 --debug
 ```
 
 Current behavior is intentionally minimal:

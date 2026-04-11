@@ -7,7 +7,11 @@ name = "columbarium"
 version = "0.1.0"
 description = "BitGN benchmark agent foundations"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+  "bitgn-api-connectrpc-python==0.9.0.1.20260405144405+6b39e6872349",
+  "bitgn-api-protocolbuffers-python==34.1.0.1.20260405144405+6b39e6872349",
+  "protobuf>=7.34.1",
+]
 
 [project.scripts]
 bitgn-run = "benchmark.bitgn.cli:main"
@@ -18,10 +22,6 @@ dev = [
 ]
 notebook = [
   "jupyterlab>=4.2,<5",
-]
-bitgn-playground = [
-  "bitgn-api-connectrpc-python==0.9.0.1.20260324104753+6b18c777b19a",
-  "bitgn-api-protocolbuffers-python==34.1.0.1.20260324104753+6b18c777b19a",
 ]
 
 [[tool.uv.index]]

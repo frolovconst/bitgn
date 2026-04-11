@@ -5,9 +5,9 @@
 - URL: <https://bitgn.com/>
 - Local vendored proto: [`../../proto/bitgn/`](../../proto/bitgn/)
 - Upstream source copied from: `/Users/kofrolov/prj/expts/bitgn/sample-agents/proto/bitgn/`
-- Last checked: 2026-04-06
+- Last checked: 2026-04-11
 
-## Observed benchmark API shape (as of 2026-04-06)
+## Observed benchmark API shape (as of 2026-04-11)
 
 The benchmark-facing API used by this project currently has three relevant parts:
 

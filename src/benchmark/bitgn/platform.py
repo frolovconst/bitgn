@@ -187,8 +187,8 @@ def _create_harness_client(benchmark_host: str):
         from bitgn.harness_connect import HarnessServiceClientSync
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "BitGN SDK is not installed. Install with `uv sync --group bitgn-playground` "
-            "or run with `uv run --group bitgn-playground bitgn-run ...`."
+            "BitGN SDK is not installed. Install project dependencies with `uv sync` "
+            "or run with `uv run bitgn-run ...`."
         ) from exc
     return HarnessServiceClientSync(benchmark_host)
 
@@ -198,8 +198,8 @@ def _create_pcm_runtime_client(harness_url: str):
         from bitgn.vm.pcm_connect import PcmRuntimeClientSync
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "BitGN SDK is not installed. Install with `uv sync --group bitgn-playground` "
-            "or run with `uv run --group bitgn-playground bitgn-run ...`."
+            "BitGN SDK is not installed. Install project dependencies with `uv sync` "
+            "or run with `uv run bitgn-run ...`."
         ) from exc
     return PcmRuntimeClientSync(harness_url)
 
@@ -209,8 +209,8 @@ def _create_mini_runtime_client(harness_url: str):
         from bitgn.vm.mini_connect import MiniRuntimeClientSync
     except ModuleNotFoundError as exc:
         raise RuntimeError(
-            "BitGN SDK is not installed. Install with `uv sync --group bitgn-playground` "
-            "or run with `uv run --group bitgn-playground bitgn-run ...`."
+            "BitGN SDK is not installed. Install project dependencies with `uv sync` "
+            "or run with `uv run bitgn-run ...`."
         ) from exc
     return MiniRuntimeClientSync(harness_url)
 
