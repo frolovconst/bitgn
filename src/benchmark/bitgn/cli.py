@@ -35,7 +35,7 @@ ANSI_YELLOW = "\033[33m"
 ANSI_GREEN = "\033[32m"
 LOCAL_RUN_LOG_PATH = Path(".local/bitgn-runs.log")
 RUN_NAME_PREFIX = "columbarium"
-MIXED_MODE_TARGET_SECONDS_PER_TASK = 25.0
+MIXED_MODE_TARGET_SECONDS_PER_TASK = 17.0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -243,7 +243,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                         f"error={_short_exception(task_exc)}",
                         flush=True,
                     )
-                    _print_task_live_footer(summary, debug=config.debug)
+                    try:
+                        _print_task_live_footer(summary, debug=config.debug)
+                    except Exception as footer_exc:
+                        print(
+                            f"[warn] task_failed_footer task_id={task_id} "
+                            f"error={_short_exception(footer_exc)}",
+                            flush=True,
+                        )
                     task_results.append((task_id, None, elapsed_seconds))
                     cumulative_task_seconds += elapsed_seconds
                     continue
@@ -259,14 +266,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             try:
                 platform.finalize_run(force=(config.trial_launch_mode == TrialLaunchMode.RUN.value))
             except Exception as finalize_exc:
-                if run_error is not None:
-                    print(
-                        "[warn] finalize_run failed after a prior run error; "
-                        f"keeping original error. finalize_error={_short_exception(finalize_exc)}",
-                        flush=True,
-                    )
-                else:
-                    raise
+                print(
+                    f"[warn] finalize_run_failed error={_short_exception(finalize_exc)}",
+                    flush=True,
+                )
 
         _print_run_summary(task_results)
         return 0
@@ -368,15 +371,7 @@ def _build_failed_task_summary(
     error: Exception,
 ) -> RunSummary:
     error_text = _short_exception(error)
-    debug_lines = _build_debug_lines(config)
-    if config.debug:
-        debug_lines.extend(
-            [
-                f"task_failed=true",
-                f"error_type={error.__class__.__name__}",
-                f"error={error_text}",
-            ]
-        )
+    debug_lines = _build_failed_task_debug_lines(config, error)
 
     return RunSummary(
         trial_id="unavailable",
@@ -391,6 +386,26 @@ def _build_failed_task_summary(
         ],
         debug_detail=debug_lines,
     )
+
+
+def _build_failed_task_debug_lines(config: BenchmarkRunConfig, error: Exception) -> list[str]:
+    if not config.debug:
+        return []
+    return [
+        "debug=true",
+        f"provider={config.model_provider}",
+        f"model={config.model_name}",
+        f"model_base_url={config.model_base_url}",
+        f"benchmark_host={config.benchmark_host}",
+        f"benchmark_id={config.benchmark_id}",
+        f"task_id={config.task_id or '<all-tasks>'}",
+        f"all_tasks={config.all_tasks}",
+        f"agent_mode={config.agent_mode}",
+        f"trial_launch_mode={config.trial_launch_mode}",
+        "task_failed=true",
+        f"error_type={error.__class__.__name__}",
+        f"error={_short_exception(error)}",
+    ]
 
 
 def _build_live_task_action_sink(
