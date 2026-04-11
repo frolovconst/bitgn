@@ -67,6 +67,9 @@ class BenchmarkPlatform(Protocol):
     def end_trial(self, trial_id: str) -> TrialResult:
         ...
 
+    def finalize_run(self, force: bool = False) -> None:
+        ...
+
 
 class AgentLoop(Protocol):
     def solve_trial(self, trial: TrialHandle) -> AgentAnswer:

@@ -15,6 +15,9 @@ class _FakeHarness:
     def __init__(self) -> None:
         self.start_playground_request = None
         self.get_benchmark_request = None
+        self.start_run_request = None
+        self.start_trial_requests = []
+        self.submit_run_request = None
 
     def start_playground(self, request):
         self.start_playground_request = request
@@ -31,6 +34,38 @@ class _FakeHarness:
             tasks = [_Task("t01"), _Task("t02"), _Task("t03")]
 
         return _Response()
+
+    def start_run(self, request):
+        self.start_run_request = request
+
+        class _Response:
+            run_id = "run-1"
+            trial_ids = ["trial-a", "trial-b", "trial-c"]
+
+        return _Response()
+
+    def start_trial(self, request):
+        self.start_trial_requests.append(request)
+
+        trial_id = request["trial_id"]
+        mapping = {
+            "trial-a": ("t01", "inst-01", "https://vm/t01"),
+            "trial-b": ("t02", "inst-02", "https://vm/t02"),
+            "trial-c": ("t03", "inst-03", "https://vm/t03"),
+        }
+        task_id, instruction, harness_url = mapping[trial_id]
+
+        class _Response:
+            def __init__(self) -> None:
+                self.trial_id = trial_id
+                self.task_id = task_id
+                self.instruction = instruction
+                self.harness_url = harness_url
+
+        return _Response()
+
+    def submit_run(self, request):
+        self.submit_run_request = request
 
     def end_trial(self, _request):
         class _Response:
@@ -67,19 +102,77 @@ def test_start_trial_uses_start_playground_by_default(monkeypatch):
     assert trial.harness_url == "https://vm.example"
 
 
-def test_run_mode_is_explicit_stub(monkeypatch):
+def test_run_mode_starts_run_and_resolves_requested_task(monkeypatch):
+    monkeypatch.setattr(
+        "benchmark.bitgn.platform._new_start_run_request",
+        lambda benchmark_id, name, api_key: {
+            "benchmark_id": benchmark_id,
+            "name": name,
+            "api_key": api_key,
+        },
+    )
+    monkeypatch.setattr(
+        "benchmark.bitgn.platform._new_start_trial_request",
+        lambda trial_id: {"trial_id": trial_id},
+    )
+
+    fake_harness = _FakeHarness()
     monkeypatch.setattr(
         "benchmark.bitgn.platform._create_harness_client",
-        lambda _host: _FakeHarness(),
+        lambda _host: fake_harness,
+    )
+
+    platform = BitgnBenchmarkPlatform(
+        benchmark_host="https://api.bitgn.com",
+        launch_mode="run",
+        run_name="test-run",
+        run_api_key="secret",
+    )
+
+    trial = platform.start_trial(TrialSpec(benchmark_id="bitgn/pac1-dev", task_id="t02"))
+
+    assert fake_harness.start_run_request == {
+        "benchmark_id": "bitgn/pac1-dev",
+        "name": "test-run",
+        "api_key": "secret",
+    }
+    assert fake_harness.start_trial_requests == [{"trial_id": "trial-a"}, {"trial_id": "trial-b"}]
+    assert trial.trial_id == "trial-b"
+    assert trial.harness_url == "https://vm/t02"
+
+
+def test_run_mode_finalize_submits_run_once(monkeypatch):
+    fake_harness = _FakeHarness()
+    monkeypatch.setattr(
+        "benchmark.bitgn.platform._create_harness_client",
+        lambda _host: fake_harness,
+    )
+    monkeypatch.setattr(
+        "benchmark.bitgn.platform._new_start_run_request",
+        lambda benchmark_id, name, api_key: {
+            "benchmark_id": benchmark_id,
+            "name": name,
+            "api_key": api_key,
+        },
+    )
+    monkeypatch.setattr(
+        "benchmark.bitgn.platform._new_start_trial_request",
+        lambda trial_id: {"trial_id": trial_id},
+    )
+    monkeypatch.setattr(
+        "benchmark.bitgn.platform._new_submit_run_request",
+        lambda run_id, force: {"run_id": run_id, "force": force},
     )
 
     platform = BitgnBenchmarkPlatform(
         benchmark_host="https://api.bitgn.com",
         launch_mode="run",
     )
+    _ = platform.start_trial(TrialSpec(benchmark_id="bitgn/pac1-dev", task_id="t01"))
+    platform.finalize_run(force=True)
+    platform.finalize_run(force=True)
 
-    with pytest.raises(NotImplementedError, match="Run mode is not implemented"):
-        platform.start_trial(TrialSpec(benchmark_id="bitgn/pac1-dev", task_id="t01"))
+    assert fake_harness.submit_run_request == {"run_id": "run-1", "force": True}
 
 
 def test_list_task_ids_uses_get_benchmark(monkeypatch):

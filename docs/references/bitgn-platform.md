@@ -5,6 +5,7 @@
 - URL: <https://bitgn.com/>
 - Local vendored proto: [`../../proto/bitgn/`](../../proto/bitgn/)
 - Upstream source copied from: `/Users/kofrolov/prj/expts/bitgn/sample-agents/proto/bitgn/`
+- Sample agents repository location: `/Users/kofrolov/prj/expts/bitgn/sample-agents`
 - Last checked: 2026-04-11
 
 ## Observed benchmark API shape (as of 2026-04-11)
@@ -37,6 +38,8 @@ Practical interpretation for this repository:
 Notes:
 
 - The two runtimes have different tool surfaces and different answer request schemas.
-- In current code, trial launch stays control-plane compatible (`StartPlayground`), and runtime selection is handled at answer-submission time by benchmark id.
+- In current code, `trial-launch-mode playground` uses `StartPlayground`.
+- In current code, `trial-launch-mode run` uses `StartRun -> StartTrial -> EndTrial -> SubmitRun(force=true)`.
+- Runtime selection is handled at answer-submission time by benchmark id.
 
 Use round-specific docs for rule or API details.

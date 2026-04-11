@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from enum import Enum
 import random
 from typing import Any, Callable
@@ -16,6 +17,14 @@ class TrialLaunchMode(str, Enum):
 class RuntimeSurface(str, Enum):
     PCM = "pcm"
     MINI = "mini"
+
+
+@dataclass
+class _RunContext:
+    run_id: str
+    benchmark_id: str
+    pending_trial_ids: list[str]
+    submitted: bool = False
 
 
 BENCHMARK_RUNTIME_SURFACE_BY_ID: dict[str, RuntimeSurface] = {
@@ -51,19 +60,24 @@ MINI_TOOLS: list[str] = [
 class BitgnBenchmarkPlatform(BenchmarkPlatform):
     """BitGN platform adapter.
 
-    Default mode is playground (`StartPlayground`) because leaderboard-scored runs
-    are currently not supported for this project flow.
+    Supports both ad-hoc playground sessions and leaderboard runs.
     """
 
     def __init__(
         self,
         benchmark_host: str,
         launch_mode: str = TrialLaunchMode.PLAYGROUND.value,
+        run_name: str | None = None,
+        run_api_key: str | None = None,
     ) -> None:
         self._benchmark_host = benchmark_host
         self._launch_mode = TrialLaunchMode(launch_mode)
+        self._run_name = run_name or "columbarium-trial-launch"
+        self._run_api_key = run_api_key or ""
         self._harness = _create_harness_client(benchmark_host)
         self._trial_handles: dict[str, TrialHandle] = {}
+        self._trial_ids_by_task_id: dict[str, str] = {}
+        self._run_context: _RunContext | None = None
 
     def list_task_ids(self, benchmark_id: str) -> list[str]:
         response = self._harness.get_benchmark(_new_get_benchmark_request(benchmark_id=benchmark_id))
@@ -92,11 +106,7 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
             self._trial_handles[trial.trial_id] = trial
             return trial
 
-        # Stub for future leaderboard mode support.
-        raise NotImplementedError(
-            "Run mode is not implemented yet. Planned flow: StartRun -> StartTrial "
-            "for prepared trial ids, then EndTrial/SubmitRun."
-        )
+        return self._start_run_trial(spec)
 
     def submit_answer(self, trial_id: str, answer: AgentAnswer) -> None:
         trial = self._trial_handles.get(trial_id)
@@ -123,6 +133,71 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
             score=_extract_optional_score(response),
             score_detail=list(response.score_detail),
         )
+
+    def finalize_run(self, force: bool = False) -> None:
+        if self._launch_mode != TrialLaunchMode.RUN:
+            return
+
+        if self._run_context is None or self._run_context.submitted:
+            return
+
+        self._harness.submit_run(
+            _new_submit_run_request(
+                run_id=self._run_context.run_id,
+                force=force,
+            )
+        )
+        self._run_context.submitted = True
+
+    def _start_run_trial(self, spec: TrialSpec) -> TrialHandle:
+        existing_trial_id = self._trial_ids_by_task_id.get(spec.task_id)
+        if existing_trial_id is not None:
+            return self._trial_handles[existing_trial_id]
+
+        run = self._ensure_run(spec.benchmark_id)
+
+        while run.pending_trial_ids:
+            trial_id = run.pending_trial_ids.pop(0)
+            response = self._harness.start_trial(_new_start_trial_request(trial_id=trial_id))
+            trial = TrialHandle(
+                trial_id=response.trial_id,
+                benchmark_id=spec.benchmark_id,
+                harness_url=response.harness_url,
+                instruction=response.instruction,
+            )
+            self._trial_handles[trial.trial_id] = trial
+            self._trial_ids_by_task_id[response.task_id] = trial.trial_id
+
+            if response.task_id == spec.task_id:
+                return trial
+
+        raise ValueError(
+            f"Task {spec.task_id!r} was not found in run for benchmark {spec.benchmark_id!r}."
+        )
+
+    def _ensure_run(self, benchmark_id: str) -> _RunContext:
+        if self._run_context is not None:
+            if self._run_context.benchmark_id != benchmark_id:
+                raise ValueError(
+                    "Run mode supports one benchmark per invocation. "
+                    f"Current run benchmark={self._run_context.benchmark_id!r}, "
+                    f"requested={benchmark_id!r}."
+                )
+            return self._run_context
+
+        response = self._harness.start_run(
+            _new_start_run_request(
+                benchmark_id=benchmark_id,
+                name=self._run_name,
+                api_key=self._run_api_key,
+            )
+        )
+        self._run_context = _RunContext(
+            run_id=response.run_id,
+            benchmark_id=benchmark_id,
+            pending_trial_ids=list(response.trial_ids),
+        )
+        return self._run_context
 
 
 class PlaceholderBenchmarkPlatform(BenchmarkPlatform):
@@ -168,6 +243,9 @@ class PlaceholderBenchmarkPlatform(BenchmarkPlatform):
             score=None,
             score_detail=["Placeholder mode: no evaluation requested."],
         )
+
+    def finalize_run(self, force: bool = False) -> None:
+        _ = force
 
 
 def _extract_optional_score(response: Any) -> float | None:
@@ -231,6 +309,24 @@ def _new_end_trial_request(trial_id: str):
     from bitgn.harness_pb2 import EndTrialRequest
 
     return EndTrialRequest(trial_id=trial_id)
+
+
+def _new_start_run_request(benchmark_id: str, name: str, api_key: str):
+    from bitgn.harness_pb2 import StartRunRequest
+
+    return StartRunRequest(benchmark_id=benchmark_id, name=name, api_key=api_key)
+
+
+def _new_start_trial_request(trial_id: str):
+    from bitgn.harness_pb2 import StartTrialRequest
+
+    return StartTrialRequest(trial_id=trial_id)
+
+
+def _new_submit_run_request(run_id: str, force: bool):
+    from bitgn.harness_pb2 import SubmitRunRequest
+
+    return SubmitRunRequest(run_id=run_id, force=force)
 
 
 def _new_answer_request(message: str, outcome: int, refs: list[str]):
