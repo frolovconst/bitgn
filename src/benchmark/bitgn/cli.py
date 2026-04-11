@@ -262,7 +262,7 @@ def _create_agent_loop(
             model_settings=ModelSettings(
                 temperature=0.0,
                 max_tokens=220,
-                timeout_seconds=min(config.model_timeout_seconds, 20.0),
+                timeout_seconds=config.model_timeout_seconds,
             ),
             max_turns=4,
         )
