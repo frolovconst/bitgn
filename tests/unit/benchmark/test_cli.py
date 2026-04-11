@@ -16,6 +16,7 @@ def test_parse_config_defaults_to_local_qwen():
     assert config.model_name == "qwen3.5:latest"
     assert config.model_base_url == "http://127.0.0.1:11434"
     assert config.model_api_key_env is None
+    assert config.bitgn_api_key_env == "BITGN_API_KEY"
 
 
 def test_parse_config_openai_defaults_and_key_env():
@@ -34,9 +35,14 @@ def test_parse_config_debug_flag():
 
 
 def test_parse_config_trial_launch_mode():
-    config = parse_config(["--task-id", "t01", "--trial-launch-mode", "run"])
+    config = parse_config(["--task-id", "t01", "--trial-launch-mode", "run", "--allow-submit"])
 
     assert config.trial_launch_mode == "run"
+
+
+def test_parse_config_run_mode_requires_allow_submit():
+    with pytest.raises(SystemExit, match="Run mode requires --allow-submit"):
+        parse_config(["--task-id", "t01", "--trial-launch-mode", "run"])
 
 
 def test_parse_config_agent_mode():

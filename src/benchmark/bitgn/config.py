@@ -21,6 +21,8 @@ class BenchmarkRunConfig:
     model_base_url: str
     model_api_key_env: str | None
     model_timeout_seconds: float
+    bitgn_api_key_env: str = "BITGN_API_KEY"
+    run_name: str | None = None
 
 
 DEFAULT_BENCHMARK_HOST = "https://api.bitgn.com"
@@ -32,6 +34,8 @@ DEFAULT_LOCAL_MODEL = "qwen3.5:latest"
 DEFAULT_LOCAL_MODEL_BASE_URL = "http://127.0.0.1:11434"
 DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
 DEFAULT_OPENAI_MODEL_BASE_URL = "https://api.openai.com"
+DEFAULT_BITGN_API_KEY_ENV = "BITGN_API_KEY"
+DEFAULT_RUN_NAME = "columbarium-trial-launch"
 
 
 def env_default_benchmark_host() -> str:
@@ -52,3 +56,7 @@ def default_model_base_url(provider: str) -> str:
     if provider == "openai":
         return DEFAULT_OPENAI_MODEL_BASE_URL
     return DEFAULT_LOCAL_MODEL_BASE_URL
+
+
+def env_default_run_name() -> str:
+    return os.getenv("BITGN_RUN_NAME", DEFAULT_RUN_NAME)

@@ -13,10 +13,12 @@ from .agent_loop import DumbAgentLoop, PlaceholderAgentLoop, RiskidanticAgentLoo
 from .config import (
     DEFAULT_AGENT_MODE,
     BenchmarkRunConfig,
+    DEFAULT_BITGN_API_KEY_ENV,
     DEFAULT_MODEL_PROVIDER,
     DEFAULT_TRIAL_LAUNCH_MODE,
     default_model_base_url,
     default_model_name,
+    env_default_run_name,
     env_default_benchmark_host,
     env_default_benchmark_id,
 )
@@ -32,7 +34,7 @@ ANSI_GREEN = "\033[32m"
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bitgn-run",
-        description="Launch one BitGN benchmark trial run (playground-first, placeholder agent logic).",
+        description="Launch BitGN benchmark trials in playground or leaderboard run mode.",
     )
     parser.add_argument("--benchmark-host", default=env_default_benchmark_host())
     parser.add_argument("--benchmark-id", default=env_default_benchmark_id())
@@ -53,7 +55,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--trial-launch-mode",
         choices=[TrialLaunchMode.PLAYGROUND.value, TrialLaunchMode.RUN.value],
         default=DEFAULT_TRIAL_LAUNCH_MODE,
-        help="Trial launch strategy. Use playground by default; run mode is a future stub.",
+        help="Trial launch strategy. `playground` runs ad-hoc trials, `run` creates a leaderboard run.",
+    )
+    parser.add_argument(
+        "--bitgn-api-key-env",
+        default=DEFAULT_BITGN_API_KEY_ENV,
+        help="Environment variable name with BitGN API key for leaderboard run mode.",
+    )
+    parser.add_argument(
+        "--run-name",
+        default=env_default_run_name(),
+        help="Leaderboard run name used with --trial-launch-mode run.",
     )
     parser.add_argument(
         "--debug",
@@ -97,6 +109,8 @@ def parse_config(argv: Sequence[str] | None = None) -> BenchmarkRunConfig:
         raise SystemExit("Either --task-id or --all-tasks must be provided.")
     if args.all_tasks and args.task_id:
         raise SystemExit("Use either --task-id or --all-tasks, not both.")
+    if args.trial_launch_mode == TrialLaunchMode.RUN.value and not args.allow_submit:
+        raise SystemExit("Run mode requires --allow-submit so trials can be ended and submitted.")
     provider = args.model_provider
     return BenchmarkRunConfig(
         benchmark_host=args.benchmark_host,
@@ -112,11 +126,14 @@ def parse_config(argv: Sequence[str] | None = None) -> BenchmarkRunConfig:
         model_base_url=args.model_base_url or default_model_base_url(provider),
         model_api_key_env=(args.model_api_key_env if provider == "openai" else None),
         model_timeout_seconds=args.model_timeout_seconds,
+        bitgn_api_key_env=args.bitgn_api_key_env,
+        run_name=args.run_name,
     )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     config = parse_config(argv)
+    bitgn_api_key = _resolve_bitgn_api_key(config)
 
     # Construct and validate model client now so provider/model wiring stays
     # exercised even before agent loop logic is implemented.
@@ -133,6 +150,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     platform = BitgnBenchmarkPlatform(
         benchmark_host=config.benchmark_host,
         launch_mode=config.trial_launch_mode,
+        run_name=config.run_name,
+        run_api_key=bitgn_api_key,
     )
     task_ids = [config.task_id] if config.task_id else platform.list_task_ids(config.benchmark_id)
 
@@ -146,23 +165,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         _print_available_tools(config.benchmark_id, platform.list_available_tools(config.benchmark_id))
 
     task_results: list[tuple[str, float | None, float]] = []
-    for index, task_id in enumerate(task_ids, start=1):
-        agent_actions: list[str] = []
-        agent_loop = _create_agent_loop(config=config, platform=platform, agent_actions=agent_actions)
-        service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
+    try:
+        for index, task_id in enumerate(task_ids, start=1):
+            agent_actions: list[str] = []
+            agent_loop = _create_agent_loop(config=config, platform=platform, agent_actions=agent_actions)
+            service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
 
-        task_config = replace(config, task_id=task_id, all_tasks=False)
-        started_at = perf_counter()
-        summary = service.run_once(task_config)
-        elapsed_seconds = perf_counter() - started_at
-        task_results.append((summary.task_id, summary.score, elapsed_seconds))
-        _print_task_summary(
-            summary,
-            debug=config.debug,
-            index=index,
-            total=len(task_ids),
-            agent_actions=agent_actions,
-        )
+            task_config = replace(config, task_id=task_id, all_tasks=False)
+            started_at = perf_counter()
+            summary = service.run_once(task_config)
+            elapsed_seconds = perf_counter() - started_at
+            task_results.append((summary.task_id, summary.score, elapsed_seconds))
+            _print_task_summary(
+                summary,
+                debug=config.debug,
+                index=index,
+                total=len(task_ids),
+                agent_actions=agent_actions,
+            )
+    finally:
+        platform.finalize_run(force=(config.trial_launch_mode == TrialLaunchMode.RUN.value))
 
     _print_run_summary(task_results)
     return 0
@@ -248,6 +270,9 @@ def _print_run_header(config: BenchmarkRunConfig, total_tasks: int) -> None:
     print(f"allow_submit: {config.allow_submit}")
     print(f"agent_mode: {config.agent_mode}")
     print(f"trial_launch_mode: {config.trial_launch_mode}")
+    if config.trial_launch_mode == TrialLaunchMode.RUN.value:
+        print(f"run_name: {config.run_name}")
+        print(f"bitgn_api_key_env: {config.bitgn_api_key_env}")
     print(f"model_provider: {config.model_provider}")
     print(f"model_name: {config.model_name}")
     print(f"model_base_url: {config.model_base_url}")
@@ -266,6 +291,20 @@ def _format_score(score: float | None) -> str:
     if isclose(score, 1.0, abs_tol=1e-9):
         return f"{ANSI_GREEN}{score_text}{ANSI_RESET}"
     return score_text
+
+
+def _resolve_bitgn_api_key(config: BenchmarkRunConfig) -> str | None:
+    if config.trial_launch_mode != TrialLaunchMode.RUN.value:
+        return None
+
+    import os
+
+    key = os.getenv(config.bitgn_api_key_env, "").strip()
+    if not key:
+        raise SystemExit(
+            f"Run mode requires a BitGN API key in env var {config.bitgn_api_key_env!r}."
+        )
+    return key
 
 
 def _compute_average_score(task_results: list[tuple[str, float | None, float]]) -> float | None:

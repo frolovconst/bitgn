@@ -54,7 +54,15 @@ Current behavior is intentionally minimal:
 Trial launch mode:
 
 - default: `--trial-launch-mode playground`
-- future stub: `--trial-launch-mode run` (reserved for leaderboard-flow wiring)
+- leaderboard: `--trial-launch-mode run --allow-submit`
+  - flow: `StartRun -> StartTrial -> EndTrial -> SubmitRun(force=true)`
+  - requires scored-run key via env var (default): `BITGN_API_KEY`
+  - optional run label: `BITGN_RUN_NAME` or `--run-name`
+
+Leaderboard reference implementation:
+
+- sibling repo: `/Users/kofrolov/prj/expts/bitgn/sample-agents`
+- relevant example: `/Users/kofrolov/prj/expts/bitgn/sample-agents/pac1-py/main.py`
 
 Benchmark/runtime separation:
 
