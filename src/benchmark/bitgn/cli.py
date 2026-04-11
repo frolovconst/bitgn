@@ -7,10 +7,11 @@ from pathlib import Path
 import random
 import subprocess
 from time import perf_counter
-from typing import Sequence
+from typing import Callable, Sequence
 
 from model_clients.factory import create_model_client
-from model_clients.types import ModelClientConfig
+from model_clients.base import ModelClient
+from model_clients.types import ModelClientConfig, ModelSettings
 
 from .agent_loop import DumbAgentLoop, PlaceholderAgentLoop, RiskidanticAgentLoop
 from .config import (
@@ -52,9 +53,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-submit", action="store_true", help="Submit answer and end trial")
     parser.add_argument(
         "--agent-mode",
-        choices=["dumb", "placeholder", "riskidantic"],
+        choices=["dumb", "placeholder", "riskidantic", "laconic-sage"],
         default=DEFAULT_AGENT_MODE,
-        help="Agent implementation mode. Use dumb for connectivity checks and riskidantic to always deny.",
+        help=(
+            "Agent implementation mode. Use dumb for connectivity checks, "
+            "riskidantic to always deny, and laconic-sage for LangGraph tool-use solving."
+        ),
     )
     parser.add_argument(
         "--trial-launch-mode",
@@ -142,11 +146,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     bitgn_api_key = _resolve_bitgn_api_key(config)
     run_started_at = perf_counter()
     task_results: list[tuple[str, float | None, float]] = []
+    run_error: Exception | None = None
 
     try:
         # Construct and validate model client now so provider/model wiring stays
         # exercised even before agent loop logic is implemented.
-        _ = create_model_client(
+        model_client = create_model_client(
             ModelClientConfig(
                 provider=config.model_provider,
                 model=config.model_name,
@@ -176,23 +181,53 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             for index, task_id in enumerate(task_ids, start=1):
                 agent_actions: list[str] = []
-                agent_loop = _create_agent_loop(config=config, platform=platform, agent_actions=agent_actions)
+                action_sink = _build_live_task_action_sink(
+                    index=index,
+                    total=len(task_ids),
+                    task_id=task_id,
+                    action_buffer=agent_actions,
+                )
+                agent_loop = _create_agent_loop(
+                    config=config,
+                    platform=platform,
+                    action_sink=action_sink,
+                    model_client=model_client,
+                )
                 service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
 
                 task_config = replace(config, task_id=task_id, all_tasks=False)
                 started_at = perf_counter()
-                summary = service.run_once(task_config)
+                summary = service.run_once(
+                    task_config,
+                    on_trial_started=lambda trial, idx=index, total_tasks=len(task_ids), tid=task_id: _print_task_live_header(
+                        index=idx,
+                        total=total_tasks,
+                        task_id=tid,
+                        trial_id=trial.trial_id,
+                        instruction=trial.instruction,
+                    ),
+                )
                 elapsed_seconds = perf_counter() - started_at
                 task_results.append((summary.task_id, summary.score, elapsed_seconds))
-                _print_task_summary(
+                _print_task_live_footer(
                     summary,
                     debug=config.debug,
-                    index=index,
-                    total=len(task_ids),
-                    agent_actions=agent_actions,
                 )
+        except Exception as exc:
+            run_error = exc
+            raise
         finally:
-            platform.finalize_run(force=(config.trial_launch_mode == TrialLaunchMode.RUN.value))
+            try:
+                platform.finalize_run(force=(config.trial_launch_mode == TrialLaunchMode.RUN.value))
+            except Exception as finalize_exc:
+                if run_error is not None:
+                    print(
+                        "[warn] finalize_run failed after a prior run error; "
+                        f"keeping original error. finalize_error={_short_exception(finalize_exc)}",
+                        flush=True,
+                    )
+                else:
+                    raise
 
         _print_run_summary(task_results)
         return 0
@@ -208,9 +243,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _create_agent_loop(
     config: BenchmarkRunConfig,
     platform: BitgnBenchmarkPlatform,
-    agent_actions: list[str],
+    action_sink: Callable[[str], None],
+    model_client: ModelClient,
 ):
-    action_sink = agent_actions.append
     if config.agent_mode == "dumb":
         return DumbAgentLoop(
             call_random_tool_fn=platform.call_random_tool,
@@ -218,7 +253,73 @@ def _create_agent_loop(
         )
     if config.agent_mode == "riskidantic":
         return RiskidanticAgentLoop(action_sink=action_sink)
+    if config.agent_mode == "laconic-sage":
+        from .laconic_sage_agent import LaconicSageAgentLoop
+
+        return LaconicSageAgentLoop(
+            model_client=model_client,
+            action_sink=action_sink,
+            model_settings=ModelSettings(
+                temperature=0.0,
+                max_tokens=220,
+                timeout_seconds=min(config.model_timeout_seconds, 20.0),
+            ),
+            max_turns=4,
+        )
     return PlaceholderAgentLoop(action_sink=action_sink)
+
+
+def _build_live_task_action_sink(
+    *,
+    index: int,
+    total: int,
+    task_id: str,
+    action_buffer: list[str],
+) -> Callable[[str], None]:
+    prefix = f"[TASK {index}/{total} {task_id}]"
+
+    def _sink(action: str) -> None:
+        action_buffer.append(action)
+        print(f"{prefix} {action}", flush=True)
+
+    return _sink
+
+
+def _print_task_live_header(
+    *,
+    index: int,
+    total: int,
+    task_id: str,
+    trial_id: str,
+    instruction: str,
+) -> None:
+    divider = "=" * 72
+    print()
+    print(divider)
+    print(f"TASK {index}/{total} | {task_id}")
+    print(divider)
+    instruction_lines = (instruction or "").splitlines() or ["(empty)"]
+    task_lines = [
+        f"task_id: {task_id}",
+        f"trial_id: {trial_id}",
+        "submitted: pending",
+        "instruction:",
+        *[f"- {line}" for line in instruction_lines],
+    ]
+    _print_task_section("TASK DETAILS", task_lines)
+    print("SOLUTION LOG")
+    print("-" * 72)
+
+
+def _print_task_live_footer(summary, debug: bool) -> None:
+    print("-" * 72)
+    result_lines = [f"score: {_format_score(summary.score)}", "comments:"]
+    score_lines = [f"- {line}" for line in summary.score_detail] or ["- (none)"]
+    result_lines.extend(score_lines)
+    if debug:
+        result_lines.append("debug_detail:")
+        result_lines.extend([f"- {line}" for line in summary.debug_detail] or ["- (none)"])
+    _print_task_section("RESULT", result_lines)
 
 
 def _print_task_summary(
@@ -420,6 +521,13 @@ def _resolve_commit_sha() -> str:
         return sha or "unknown"
     except (OSError, subprocess.SubprocessError):
         return "unknown"
+
+
+def _short_exception(exc: Exception, limit: int = 220) -> str:
+    text = " ".join(str(exc).split())
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 3]}..."
 
 
 if __name__ == "__main__":

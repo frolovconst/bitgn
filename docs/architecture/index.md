@@ -18,5 +18,6 @@ Workspace docs exist to support development around that core.
 
 - [`repository-structure.md`](./repository-structure.md)
 - [`agent-model-client.md`](./agent-model-client.md)
+- [`laconic-sage-agent.md`](./laconic-sage-agent.md)
 - [`agent-runtime-workspace.md`](./agent-runtime-workspace.md)
 - [`local-llms-workspace.md`](./local-llms-workspace.md)

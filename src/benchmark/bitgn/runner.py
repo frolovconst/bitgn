@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from .config import BenchmarkRunConfig
-from .contracts import AgentLoop, BenchmarkPlatform, TrialResult, TrialSpec
+from .contracts import AgentLoop, BenchmarkPlatform, TrialHandle, TrialResult, TrialSpec
 
 
 @dataclass(frozen=True)
@@ -25,13 +26,19 @@ class BenchmarkRunService:
         self._platform = platform
         self._agent_loop = agent_loop
 
-    def run_once(self, config: BenchmarkRunConfig) -> RunSummary:
+    def run_once(
+        self,
+        config: BenchmarkRunConfig,
+        on_trial_started: Callable[[TrialHandle], None] | None = None,
+    ) -> RunSummary:
         if config.task_id is None:
             raise ValueError("run_once requires a concrete task_id")
         debug_lines = _build_debug_lines(config)
         trial = self._platform.start_trial(
             TrialSpec(benchmark_id=config.benchmark_id, task_id=config.task_id)
         )
+        if on_trial_started is not None:
+            on_trial_started(trial)
         answer = self._agent_loop.solve_trial(trial)
 
         if config.allow_submit:

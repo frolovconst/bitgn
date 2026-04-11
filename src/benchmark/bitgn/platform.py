@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 import random
+import time
 from typing import Any
 
 from model_clients.types import ToolDefinition
@@ -53,7 +54,10 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
         self._run_context: _RunContext | None = None
 
     def list_task_ids(self, benchmark_id: str) -> list[str]:
-        response = self._harness.get_benchmark(_new_get_benchmark_request(benchmark_id=benchmark_id))
+        response = _call_with_retries(
+            lambda: self._harness.get_benchmark(_new_get_benchmark_request(benchmark_id=benchmark_id)),
+            operation="get_benchmark",
+        )
         return [task.task_id for task in response.tasks]
 
     def list_available_tools(self, benchmark_id: str) -> list[str]:
@@ -64,11 +68,14 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
 
     def start_trial(self, spec: TrialSpec) -> TrialHandle:
         if self._launch_mode == TrialLaunchMode.PLAYGROUND:
-            response = self._harness.start_playground(
-                _new_start_playground_request(
-                    benchmark_id=spec.benchmark_id,
-                    task_id=spec.task_id,
-                )
+            response = _call_with_retries(
+                lambda: self._harness.start_playground(
+                    _new_start_playground_request(
+                        benchmark_id=spec.benchmark_id,
+                        task_id=spec.task_id,
+                    )
+                ),
+                operation="start_playground",
             )
             trial = TrialHandle(
                 trial_id=response.trial_id,
@@ -88,10 +95,16 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
 
         runtime_surface = _resolve_runtime_surface(trial.benchmark_id)
         if runtime_surface == RuntimeSurface.MINI:
-            _submit_answer_mini(trial.harness_url, answer)
+            _call_with_retries(
+                lambda: _submit_answer_mini(trial.harness_url, answer),
+                operation="submit_answer_mini",
+            )
             return
 
-        _submit_answer_pcm(trial.harness_url, answer)
+        _call_with_retries(
+            lambda: _submit_answer_pcm(trial.harness_url, answer),
+            operation="submit_answer_pcm",
+        )
 
     def call_random_tool(self, trial: TrialHandle) -> ToolCallTrace:
         runtime_surface = _resolve_runtime_surface(trial.benchmark_id)
@@ -123,7 +136,10 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
         return ToolCallTrace(tool_name=tool_name, params=params, result=result)
 
     def end_trial(self, trial_id: str) -> TrialResult:
-        response = self._harness.end_trial(_new_end_trial_request(trial_id=trial_id))
+        response = _call_with_retries(
+            lambda: self._harness.end_trial(_new_end_trial_request(trial_id=trial_id)),
+            operation="end_trial",
+        )
         return TrialResult(
             trial_id=response.trial_id,
             score=_extract_optional_score(response),
@@ -137,11 +153,15 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
         if self._run_context is None or self._run_context.submitted:
             return
 
-        self._harness.submit_run(
-            _new_submit_run_request(
-                run_id=self._run_context.run_id,
-                force=force,
+        _call_with_retries(
+            lambda: self._harness.submit_run(
+                _new_submit_run_request(
+                    run_id=self._run_context.run_id,
+                    force=force,
+                )
             )
+            ,
+            operation="submit_run",
         )
         self._run_context.submitted = True
 
@@ -154,7 +174,10 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
 
         while run.pending_trial_ids:
             trial_id = run.pending_trial_ids.pop(0)
-            response = self._harness.start_trial(_new_start_trial_request(trial_id=trial_id))
+            response = _call_with_retries(
+                lambda: self._harness.start_trial(_new_start_trial_request(trial_id=trial_id)),
+                operation="start_trial",
+            )
             trial = TrialHandle(
                 trial_id=response.trial_id,
                 benchmark_id=spec.benchmark_id,
@@ -181,12 +204,16 @@ class BitgnBenchmarkPlatform(BenchmarkPlatform):
                 )
             return self._run_context
 
-        response = self._harness.start_run(
-            _new_start_run_request(
-                benchmark_id=benchmark_id,
-                name=self._run_name,
-                api_key=self._run_api_key,
+        response = _call_with_retries(
+            lambda: self._harness.start_run(
+                _new_start_run_request(
+                    benchmark_id=benchmark_id,
+                    name=self._run_name,
+                    api_key=self._run_api_key,
+                )
             )
+            ,
+            operation="start_run",
         )
         self._run_context = _RunContext(
             run_id=response.run_id,
@@ -415,3 +442,64 @@ def _submit_answer_mini(harness_url: str, answer: AgentAnswer) -> None:
         )
     )
 
+
+def _call_with_retries(
+    fn,
+    *,
+    operation: str,
+    max_attempts: int = 3,
+    initial_delay_seconds: float = 0.25,
+    backoff_multiplier: float = 2.0,
+):
+    delay = initial_delay_seconds
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            if not _is_retryable_platform_error(exc) or attempt >= max_attempts:
+                raise
+            print(
+                f"[retry] operation={operation} attempt={attempt}/{max_attempts} "
+                f"error={_summarize_error(exc)} next_delay={delay:.2f}s",
+                flush=True,
+            )
+            time.sleep(delay)
+            delay *= backoff_multiplier
+    raise RuntimeError(f"Retry loop exhausted unexpectedly for operation {operation}.")
+
+
+def _is_retryable_platform_error(exc: Exception) -> bool:
+    text = _summarize_error(exc).lower()
+    non_retryable_markers = (
+        "no space left on device",
+        "invalid argument",
+        "permission denied",
+        "unauthenticated",
+        "not found",
+    )
+    if any(marker in text for marker in non_retryable_markers):
+        return False
+
+    retryable_markers = (
+        "deadline exceeded",
+        "timeout",
+        "temporarily unavailable",
+        "unavailable",
+        "internal",
+        "connection reset",
+        "connection refused",
+        "broken pipe",
+        "eof",
+        "reset by peer",
+        "503",
+        "502",
+        "504",
+    )
+    return any(marker in text for marker in retryable_markers)
+
+
+def _summarize_error(exc: Exception, limit: int = 220) -> str:
+    text = " ".join(str(exc).split())
+    if len(text) <= limit:
+        return text
+    return f"{text[: limit - 3]}..."

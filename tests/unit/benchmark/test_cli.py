@@ -77,6 +77,12 @@ def test_parse_config_agent_mode_riskidantic():
     assert config.agent_mode == "riskidantic"
 
 
+def test_parse_config_agent_mode_laconic_sage():
+    config = parse_config(["--task-id", "t01", "--agent-mode", "laconic-sage"])
+
+    assert config.agent_mode == "laconic-sage"
+
+
 def test_parse_config_all_tasks_mode():
     config = parse_config(["--all-tasks"])
 
