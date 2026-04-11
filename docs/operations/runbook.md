@@ -3,6 +3,7 @@
 ## Workflow rules
 
 - New feature -> new branch.
+- Before creating a feature branch, switch to `main` and pull the latest remote changes.
 - Do not implement feature work on `main`.
 - Decompose large tasks before coding.
 - Use the workspace that matches the task.
