@@ -1,7 +1,7 @@
 import pytest
 
 from benchmark.bitgn.contracts import AgentAnswer, TrialOutcome, TrialSpec
-from benchmark.bitgn.platform import BitgnBenchmarkPlatform
+from benchmark.bitgn.platform import BitgnBenchmarkPlatform, _call_with_retries
 
 
 class _FakeStartPlaygroundResponse:
@@ -250,3 +250,33 @@ def test_submit_answer_uses_mini_for_sandbox_benchmark(monkeypatch):
     )
 
     assert fake_runtime_calls["request"] == {"answer": "Done", "refs": ["/tmp/file.txt"]}
+
+
+def test_call_with_retries_retries_transient_unavailable(monkeypatch):
+    monkeypatch.setattr("benchmark.bitgn.platform.time.sleep", lambda _seconds: None)
+
+    attempts = {"count": 0}
+
+    def flaky():
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            raise RuntimeError("service unavailable: 503")
+        return "ok"
+
+    result = _call_with_retries(flaky, operation="test-op", max_attempts=3)
+    assert result == "ok"
+    assert attempts["count"] == 3
+
+
+def test_call_with_retries_does_not_retry_no_space(monkeypatch):
+    monkeypatch.setattr("benchmark.bitgn.platform.time.sleep", lambda _seconds: None)
+
+    attempts = {"count": 0}
+
+    def hard_failure():
+        attempts["count"] += 1
+        raise RuntimeError("failed to save VM: no space left on device")
+
+    with pytest.raises(RuntimeError, match="no space left on device"):
+        _call_with_retries(hard_failure, operation="test-op", max_attempts=3)
+    assert attempts["count"] == 1
