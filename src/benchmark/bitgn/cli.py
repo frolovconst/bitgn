@@ -9,7 +9,7 @@ from typing import Sequence
 from model_clients.factory import create_model_client
 from model_clients.types import ModelClientConfig
 
-from .agent_loop import DumbAgentLoop, PlaceholderAgentLoop
+from .agent_loop import DumbAgentLoop, PlaceholderAgentLoop, RiskidanticAgentLoop
 from .config import (
     DEFAULT_AGENT_MODE,
     BenchmarkRunConfig,
@@ -45,9 +45,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-submit", action="store_true", help="Submit answer and end trial")
     parser.add_argument(
         "--agent-mode",
-        choices=["dumb", "placeholder"],
+        choices=["dumb", "placeholder", "riskidantic"],
         default=DEFAULT_AGENT_MODE,
-        help="Agent implementation mode. Use dumb for end-to-end connectivity checks.",
+        help="Agent implementation mode. Use dumb for connectivity checks and riskidantic to always deny.",
     )
     parser.add_argument(
         "--trial-launch-mode",
@@ -173,12 +173,14 @@ def _create_agent_loop(
     platform: BitgnBenchmarkPlatform,
     agent_actions: list[str],
 ):
-    action_sink = agent_actions.append if config.debug else None
+    action_sink = agent_actions.append
     if config.agent_mode == "dumb":
         return DumbAgentLoop(
             call_random_tool_fn=platform.call_random_tool,
             action_sink=action_sink,
         )
+    if config.agent_mode == "riskidantic":
+        return RiskidanticAgentLoop(action_sink=action_sink)
     return PlaceholderAgentLoop(action_sink=action_sink)
 
 
@@ -189,30 +191,39 @@ def _print_task_summary(
     total: int,
     agent_actions: list[str],
 ) -> None:
-    divider = "-" * 72
+    divider = "=" * 72
     print()
     print(divider)
     print(f"TASK {index}/{total} | {summary.task_id}")
     print(divider)
-    print("instruction:")
-    for line in (summary.instruction or "").splitlines() or ["(empty)"]:
-        print(f"- {line}")
-    print(f"score: {_format_score(summary.score)}")
-    print(f"trial_id: {summary.trial_id}")
-    print(f"submitted: {summary.submitted}")
-    print("score_detail:")
-    for line in summary.score_detail:
-        print(f"- {line}")
+    instruction_lines = (summary.instruction or "").splitlines() or ["(empty)"]
+    task_lines = [
+        f"task_id: {summary.task_id}",
+        f"trial_id: {summary.trial_id}",
+        f"submitted: {summary.submitted}",
+        "instruction:",
+        *[f"- {line}" for line in instruction_lines],
+    ]
+    action_lines = [f"- {action}" for action in agent_actions] or ["- (none)"]
+    result_lines = [f"score: {_format_score(summary.score)}", "comments:"]
+    score_lines = [f"- {line}" for line in summary.score_detail] or ["- (none)"]
+    result_lines.extend(score_lines)
     if debug:
-        print("debug_detail:")
-        for line in summary.debug_detail:
-            print(f"- {line}")
-        print("agent_actions:")
-        if agent_actions:
-            for action in agent_actions:
-                print(f"- {action}")
-        else:
-            print("- (none)")
+        result_lines.append("debug_detail:")
+        result_lines.extend([f"- {line}" for line in summary.debug_detail] or ["- (none)"])
+
+    _print_task_section("TASK DETAILS", task_lines)
+    _print_task_section("SOLUTION LOG", action_lines)
+    _print_task_section("RESULT", result_lines)
+
+
+def _print_task_section(title: str, lines: list[str]) -> None:
+    divider = "-" * 72
+    print(title)
+    print(divider)
+    for line in lines:
+        print(line)
+    print(divider)
 
 
 def _print_available_tools(benchmark_id: str, tools: list[str]) -> None:

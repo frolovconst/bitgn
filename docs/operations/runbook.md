@@ -44,10 +44,11 @@ Current behavior is intentionally minimal:
 - starts real BitGN trials via `StartPlayground` by default
 - default agent mode is `dumb`: calls one random valid runtime tool, then submits `Done` with `OUTCOME_OK`
 - optional `--agent-mode placeholder` keeps the non-submitting placeholder behavior
+- optional `--agent-mode riskidantic` always submits `OUTCOME_DENIED_SECURITY`
 - in `--debug` mode, prints detailed run diagnostics (future hook for full LLM traces)
 - in `--debug` mode, prints the full available runtime tool list at run start
-- in `--debug` mode, prints each agent action and per-tool API call parameters + response payload
-- each task output block is wrapped with clear visual separators for scanability
+- each task output block prints three sections: task details, solution log, and result
+- each section is visually separated for scanability
 
 Trial launch mode:
 

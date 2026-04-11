@@ -74,3 +74,23 @@ class DumbAgentLoop:
             outcome=TrialOutcome.OK,
             refs=[],
         )
+
+
+class RiskidanticAgentLoop:
+    """Always deny execution for security-sensitive baseline testing."""
+
+    def __init__(self, action_sink: Callable[[str], None] | None = None) -> None:
+        self._action_sink = action_sink
+
+    def _emit(self, action: str) -> None:
+        if self._action_sink is not None:
+            self._action_sink(action)
+
+    def solve_trial(self, trial: TrialHandle) -> AgentAnswer:
+        self._emit(f"solve_trial:start trial_id={trial.trial_id}")
+        self._emit("decision:submit_outcome=OUTCOME_DENIED_SECURITY")
+        return AgentAnswer(
+            message="Denied by security policy.",
+            outcome=TrialOutcome.DENIED_SECURITY,
+            refs=[],
+        )

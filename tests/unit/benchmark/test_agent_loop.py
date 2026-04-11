@@ -1,4 +1,4 @@
-from benchmark.bitgn.agent_loop import DumbAgentLoop, PlaceholderAgentLoop
+from benchmark.bitgn.agent_loop import DumbAgentLoop, PlaceholderAgentLoop, RiskidanticAgentLoop
 from benchmark.bitgn.contracts import ToolCallTrace, TrialHandle, TrialOutcome
 
 
@@ -71,3 +71,14 @@ def test_dumb_agent_calls_one_runtime_tool():
     assert "runtime_tool_call:Context" in actions
     assert 'runtime_tool_params:{"root":"/"}' in actions
     assert 'runtime_tool_result:{"unix_time":"123"}' in actions
+
+
+def test_riskidantic_agent_returns_denied_security():
+    actions = []
+    answer = RiskidanticAgentLoop(action_sink=actions.append).solve_trial(_trial())
+
+    assert answer.outcome == TrialOutcome.DENIED_SECURITY
+    assert answer.message == "Denied by security policy."
+    assert answer.refs == []
+    assert any(action.startswith("solve_trial:start") for action in actions)
+    assert any("submit_outcome=OUTCOME_DENIED_SECURITY" in action for action in actions)

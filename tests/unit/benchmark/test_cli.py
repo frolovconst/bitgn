@@ -1,6 +1,7 @@
 import pytest
+from benchmark.bitgn.runner import RunSummary
 
-from benchmark.bitgn.cli import _compute_average_score, _format_score, parse_config
+from benchmark.bitgn.cli import _compute_average_score, _format_score, _print_task_summary, parse_config
 
 
 def test_parse_config_defaults_to_local_qwen():
@@ -44,6 +45,12 @@ def test_parse_config_agent_mode():
     assert config.agent_mode == "placeholder"
 
 
+def test_parse_config_agent_mode_riskidantic():
+    config = parse_config(["--task-id", "t01", "--agent-mode", "riskidantic"])
+
+    assert config.agent_mode == "riskidantic"
+
+
 def test_parse_config_all_tasks_mode():
     config = parse_config(["--all-tasks"])
 
@@ -81,3 +88,32 @@ def test_compute_average_score_ignores_missing_scores():
 
 def test_compute_average_score_none_when_all_missing():
     assert _compute_average_score([("t01", None, 0.1), ("t02", None, 0.2)]) is None
+
+
+def test_task_summary_has_three_sections(capsys):
+    summary = RunSummary(
+        trial_id="trial-1",
+        benchmark_id="bitgn/pac1-dev",
+        task_id="t01",
+        instruction="Do the thing",
+        submitted=False,
+        score=None,
+        score_detail=["line one"],
+        debug_detail=["debug line"],
+    )
+
+    _print_task_summary(
+        summary=summary,
+        debug=False,
+        index=1,
+        total=1,
+        agent_actions=["solve_trial:start trial_id=trial-1"],
+    )
+    out = capsys.readouterr().out
+
+    assert "TASK DETAILS" in out
+    assert "SOLUTION LOG" in out
+    assert "RESULT" in out
+    assert out.count("TASK DETAILS") == 1
+    assert out.count("SOLUTION LOG") == 1
+    assert out.count("RESULT") == 1
