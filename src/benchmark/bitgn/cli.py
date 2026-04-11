@@ -27,7 +27,7 @@ from .config import (
     env_default_benchmark_id,
 )
 from .platform import BitgnBenchmarkPlatform, TrialLaunchMode
-from .runner import BenchmarkRunService
+from .runner import BenchmarkRunService, RunSummary
 
 ANSI_RESET = "\033[0m"
 ANSI_RED = "\033[31m"
@@ -35,6 +35,7 @@ ANSI_YELLOW = "\033[33m"
 ANSI_GREEN = "\033[32m"
 LOCAL_RUN_LOG_PATH = Path(".local/bitgn-runs.log")
 RUN_NAME_PREFIX = "columbarium"
+MIXED_MODE_TARGET_SECONDS_PER_TASK = 25.0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -53,11 +54,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--allow-submit", action="store_true", help="Submit answer and end trial")
     parser.add_argument(
         "--agent-mode",
-        choices=["dumb", "placeholder", "riskidantic", "laconic-sage"],
+        choices=["dumb", "placeholder", "riskidantic", "laconic-sage", "mixed"],
         default=DEFAULT_AGENT_MODE,
         help=(
             "Agent implementation mode. Use dumb for connectivity checks, "
-            "riskidantic to always deny, and laconic-sage for LangGraph tool-use solving."
+            "riskidantic to always deny, laconic-sage for LangGraph tool-use solving, "
+            "and mixed for adaptive laconic-sage/riskidantic pacing."
         ),
     )
     parser.add_argument(
@@ -147,6 +149,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     run_started_at = perf_counter()
     task_results: list[tuple[str, float | None, float]] = []
     run_error: Exception | None = None
+    cumulative_task_seconds = 0.0
 
     try:
         # Construct and validate model client now so provider/model wiring stays
@@ -180,6 +183,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         try:
             for index, task_id in enumerate(task_ids, start=1):
+                effective_agent_mode = _resolve_agent_mode_for_task(
+                    requested_mode=config.agent_mode,
+                    completed_tasks=len(task_results),
+                    elapsed_seconds=cumulative_task_seconds,
+                )
                 agent_actions: list[str] = []
                 action_sink = _build_live_task_action_sink(
                     index=index,
@@ -187,32 +195,63 @@ def main(argv: Sequence[str] | None = None) -> int:
                     task_id=task_id,
                     action_buffer=agent_actions,
                 )
+                if config.agent_mode == "mixed":
+                    _emit_mixed_scheduler_status(
+                        index=index,
+                        total=len(task_ids),
+                        task_id=task_id,
+                        selected_mode=effective_agent_mode,
+                        completed_tasks=len(task_results),
+                        elapsed_seconds=cumulative_task_seconds,
+                    )
+
+                task_config = replace(
+                    config,
+                    task_id=task_id,
+                    all_tasks=False,
+                    agent_mode=effective_agent_mode,
+                )
                 agent_loop = _create_agent_loop(
-                    config=config,
+                    config=task_config,
                     platform=platform,
                     action_sink=action_sink,
                     model_client=model_client,
                 )
                 service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
 
-                task_config = replace(config, task_id=task_id, all_tasks=False)
                 started_at = perf_counter()
-                summary = service.run_once(
-                    task_config,
-                    on_trial_started=lambda trial, idx=index, total_tasks=len(task_ids), tid=task_id: _print_task_live_header(
-                        index=idx,
-                        total=total_tasks,
-                        task_id=tid,
-                        trial_id=trial.trial_id,
-                        instruction=trial.instruction,
-                    ),
-                )
+                try:
+                    summary = service.run_once(
+                        task_config,
+                        on_trial_started=lambda trial, idx=index, total_tasks=len(task_ids), tid=task_id: _print_task_live_header(
+                            index=idx,
+                            total=total_tasks,
+                            task_id=tid,
+                            trial_id=trial.trial_id,
+                            instruction=trial.instruction,
+                        ),
+                    )
+                except Exception as task_exc:
+                    elapsed_seconds = perf_counter() - started_at
+                    summary = _build_failed_task_summary(
+                        config=task_config,
+                        task_id=task_id,
+                        error=task_exc,
+                    )
+                    print(
+                        f"[warn] task_failed task_id={task_id} agent_mode={effective_agent_mode} "
+                        f"error={_short_exception(task_exc)}",
+                        flush=True,
+                    )
+                    _print_task_live_footer(summary, debug=config.debug)
+                    task_results.append((task_id, None, elapsed_seconds))
+                    cumulative_task_seconds += elapsed_seconds
+                    continue
+
                 elapsed_seconds = perf_counter() - started_at
+                cumulative_task_seconds += elapsed_seconds
                 task_results.append((summary.task_id, summary.score, elapsed_seconds))
-                _print_task_live_footer(
-                    summary,
-                    debug=config.debug,
-                )
+                _print_task_live_footer(summary, debug=config.debug)
         except Exception as exc:
             run_error = exc
             raise
@@ -266,7 +305,92 @@ def _create_agent_loop(
             ),
             max_turns=4,
         )
+    if config.agent_mode == "mixed":
+        from .laconic_sage_agent import LaconicSageAgentLoop
+
+        return LaconicSageAgentLoop(
+            model_client=model_client,
+            action_sink=action_sink,
+            model_settings=ModelSettings(
+                temperature=0.0,
+                max_tokens=220,
+                timeout_seconds=config.model_timeout_seconds,
+            ),
+            max_turns=4,
+        )
     return PlaceholderAgentLoop(action_sink=action_sink)
+
+
+def _resolve_agent_mode_for_task(
+    *,
+    requested_mode: str,
+    completed_tasks: int,
+    elapsed_seconds: float,
+) -> str:
+    if requested_mode != "mixed":
+        return requested_mode
+    if completed_tasks == 0:
+        return "laconic-sage"
+
+    expected_seconds = completed_tasks * MIXED_MODE_TARGET_SECONDS_PER_TASK
+    if elapsed_seconds > expected_seconds:
+        return "riskidantic"
+    return "laconic-sage"
+
+
+def _emit_mixed_scheduler_status(
+    *,
+    index: int,
+    total: int,
+    task_id: str,
+    selected_mode: str,
+    completed_tasks: int,
+    elapsed_seconds: float,
+) -> None:
+    expected_seconds = completed_tasks * MIXED_MODE_TARGET_SECONDS_PER_TASK
+    lag_seconds = elapsed_seconds - expected_seconds
+    print(
+        f"[TASK {index}/{total} {task_id}] "
+        f"mixed_scheduler:selected_agent_mode={selected_mode} "
+        f"completed_tasks={completed_tasks} "
+        f"elapsed_seconds={elapsed_seconds:.3f} "
+        f"expected_seconds={expected_seconds:.3f} "
+        f"lag_seconds={lag_seconds:.3f} "
+        f"target_seconds_per_task={MIXED_MODE_TARGET_SECONDS_PER_TASK:.1f}",
+        flush=True,
+    )
+
+
+def _build_failed_task_summary(
+    *,
+    config: BenchmarkRunConfig,
+    task_id: str,
+    error: Exception,
+) -> RunSummary:
+    error_text = _short_exception(error)
+    debug_lines = _build_debug_lines(config)
+    if config.debug:
+        debug_lines.extend(
+            [
+                f"task_failed=true",
+                f"error_type={error.__class__.__name__}",
+                f"error={error_text}",
+            ]
+        )
+
+    return RunSummary(
+        trial_id="unavailable",
+        benchmark_id=config.benchmark_id,
+        task_id=task_id,
+        instruction="(instruction unavailable due to task startup failure)",
+        submitted=False,
+        score=None,
+        score_detail=[
+            f"Task execution failed: {error_text}",
+            "Task skipped after failure to keep the run progressing.",
+        ],
+        debug_detail=debug_lines,
+    )
 
 
 def _build_live_task_action_sink(
