@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import replace
+from math import isclose
+from time import perf_counter
 from typing import Sequence
 
 from model_clients.factory import create_model_client
@@ -20,6 +22,11 @@ from .config import (
 )
 from .platform import BitgnBenchmarkPlatform, TrialLaunchMode
 from .runner import BenchmarkRunService
+
+ANSI_RESET = "\033[0m"
+ANSI_RED = "\033[31m"
+ANSI_YELLOW = "\033[33m"
+ANSI_GREEN = "\033[32m"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -133,16 +140,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("No tasks returned by benchmark.")
         return 0
 
+    _print_run_header(config, total_tasks=len(task_ids))
+
     if config.debug:
         _print_available_tools(config.benchmark_id, platform.list_available_tools(config.benchmark_id))
 
+    task_results: list[tuple[str, float | None, float]] = []
     for index, task_id in enumerate(task_ids, start=1):
         agent_actions: list[str] = []
         agent_loop = _create_agent_loop(config=config, platform=platform, agent_actions=agent_actions)
         service = BenchmarkRunService(platform=platform, agent_loop=agent_loop)
 
         task_config = replace(config, task_id=task_id, all_tasks=False)
+        started_at = perf_counter()
         summary = service.run_once(task_config)
+        elapsed_seconds = perf_counter() - started_at
+        task_results.append((summary.task_id, summary.score, elapsed_seconds))
         _print_task_summary(
             summary,
             debug=config.debug,
@@ -151,6 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             agent_actions=agent_actions,
         )
 
+    _print_run_summary(task_results)
     return 0
 
 
@@ -175,15 +189,17 @@ def _print_task_summary(
     total: int,
     agent_actions: list[str],
 ) -> None:
-    divider = "=" * 72
+    divider = "-" * 72
+    print()
     print(divider)
-    print(f"Task {index}/{total} | {summary.task_id}")
+    print(f"TASK {index}/{total} | {summary.task_id}")
     print(divider)
+    print("instruction:")
+    for line in (summary.instruction or "").splitlines() or ["(empty)"]:
+        print(f"- {line}")
+    print(f"score: {_format_score(summary.score)}")
     print(f"trial_id: {summary.trial_id}")
-    print(f"benchmark_id: {summary.benchmark_id}")
-    print(f"task_id: {summary.task_id}")
     print(f"submitted: {summary.submitted}")
-    print(f"score: {summary.score}")
     print("score_detail:")
     for line in summary.score_detail:
         print(f"- {line}")
@@ -201,11 +217,66 @@ def _print_task_summary(
 
 def _print_available_tools(benchmark_id: str, tools: list[str]) -> None:
     divider = "=" * 72
+    print()
     print(divider)
     print(f"Available runtime tools | benchmark={benchmark_id}")
     print(divider)
     for tool in tools:
         print(f"- {tool}")
+
+
+def _print_run_header(config: BenchmarkRunConfig, total_tasks: int) -> None:
+    divider = "=" * 72
+    print(divider)
+    print("RUN INFO")
+    print(divider)
+    print(f"benchmark_host: {config.benchmark_host}")
+    print(f"benchmark_id: {config.benchmark_id}")
+    print(f"task_scope: {'all' if config.all_tasks else config.task_id}")
+    print(f"total_tasks: {total_tasks}")
+    print(f"allow_submit: {config.allow_submit}")
+    print(f"agent_mode: {config.agent_mode}")
+    print(f"trial_launch_mode: {config.trial_launch_mode}")
+    print(f"model_provider: {config.model_provider}")
+    print(f"model_name: {config.model_name}")
+    print(f"model_base_url: {config.model_base_url}")
+    print("=" * 72)
+
+
+def _format_score(score: float | None) -> str:
+    if score is None:
+        return "None"
+
+    score_text = str(score)
+    if isclose(score, 0.0, abs_tol=1e-9):
+        return f"{ANSI_RED}{score_text}{ANSI_RESET}"
+    if 0.0 < score < 1.0:
+        return f"{ANSI_YELLOW}{score_text}{ANSI_RESET}"
+    if isclose(score, 1.0, abs_tol=1e-9):
+        return f"{ANSI_GREEN}{score_text}{ANSI_RESET}"
+    return score_text
+
+
+def _compute_average_score(task_results: list[tuple[str, float | None, float]]) -> float | None:
+    scored_values = [score for _, score, _ in task_results if score is not None]
+    if not scored_values:
+        return None
+    return sum(scored_values) / len(scored_values)
+
+
+def _print_run_summary(task_results: list[tuple[str, float | None, float]]) -> None:
+    divider = "=" * 72
+    print()
+    print(divider)
+    print("RUN SUMMARY")
+    print(divider)
+    average_score = _compute_average_score(task_results)
+    print(f"average_score: {_format_score(average_score)}")
+    print()
+    print("task_id | score | time_seconds")
+    print("-" * 72)
+    for task_id, score, elapsed_seconds in task_results:
+        print(f"{task_id} | {_format_score(score)} | {elapsed_seconds:.3f}")
 
 
 if __name__ == "__main__":

@@ -34,6 +34,7 @@ def test_run_once_without_submit_returns_placeholder_details():
 
     assert summary.submitted is False
     assert summary.score is None
+    assert summary.instruction
     assert any("Submission disabled" in line for line in summary.score_detail)
     assert summary.debug_detail == []
 
@@ -48,6 +49,7 @@ def test_run_once_with_submit_flows_through_placeholder_platform():
 
     assert summary.submitted is True
     assert summary.score is None
+    assert summary.instruction
     assert summary.trial_id.startswith("placeholder:")
 
 

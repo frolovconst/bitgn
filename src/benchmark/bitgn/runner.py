@@ -11,6 +11,7 @@ class RunSummary:
     trial_id: str
     benchmark_id: str
     task_id: str
+    instruction: str
     submitted: bool
     score: float | None
     score_detail: list[str]
@@ -36,12 +37,13 @@ class BenchmarkRunService:
         if config.allow_submit:
             self._platform.submit_answer(trial.trial_id, answer)
             result = self._platform.end_trial(trial.trial_id)
-            return _to_summary(config, result, submitted=True, debug_detail=debug_lines)
+            return _to_summary(config, trial.instruction, result, submitted=True, debug_detail=debug_lines)
 
         return RunSummary(
             trial_id=trial.trial_id,
             benchmark_id=config.benchmark_id,
             task_id=config.task_id,
+            instruction=trial.instruction,
             submitted=False,
             score=None,
             score_detail=[
@@ -55,6 +57,7 @@ class BenchmarkRunService:
 
 def _to_summary(
     config: BenchmarkRunConfig,
+    instruction: str,
     result: TrialResult,
     submitted: bool,
     debug_detail: list[str],
@@ -63,6 +66,7 @@ def _to_summary(
         trial_id=result.trial_id,
         benchmark_id=config.benchmark_id,
         task_id=config.task_id,
+        instruction=instruction,
         submitted=submitted,
         score=result.score,
         score_detail=result.score_detail,
